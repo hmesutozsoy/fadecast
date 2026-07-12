@@ -53,7 +53,8 @@ async function main() {
   console.log(`wallet ${payer.publicKey.toBase58()} balance ${bal / 1e9} SOL on ${NETWORK}`);
   if (bal === 0) throw new Error('Fund the wallet first (https://faucet.solana.com for devnet).');
 
-  const idlPath = path.join(__dirname, 'idl/txoracle.json');
+  const perNetwork = path.join(__dirname, `idl/txoracle.${NETWORK}.json`);
+  const idlPath = fs.existsSync(perNetwork) ? perNetwork : path.join(__dirname, 'idl/txoracle.json');
   if (!fs.existsSync(idlPath)) {
     throw new Error('Missing scripts/idl/txoracle.json — copy the matching IDL from TxLINE\'s runnable devnet examples (github.com/txodds).');
   }
