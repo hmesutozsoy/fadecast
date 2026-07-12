@@ -38,6 +38,28 @@
       "result": "Japan 2–1 Spain"
     },
     {
+      "fixtureId": "wc2022-arg-mex",
+      "home": "Argentina",
+      "away": "Mexico",
+      "p0": 0.62,
+      "goals": [
+        { "min": 64, "team": "home", "scorer": "Messi" },
+        { "min": 87, "team": "home", "scorer": "Enzo Fernández" }
+      ],
+      "result": "Argentina 2–0 Mexico"
+    },
+    {
+      "fixtureId": "wc2022-bra-srb",
+      "home": "Brazil",
+      "away": "Serbia",
+      "p0": 0.72,
+      "goals": [
+        { "min": 62, "team": "home", "scorer": "Richarlison" },
+        { "min": 73, "team": "home", "scorer": "Richarlison" }
+      ],
+      "result": "Brazil 2–0 Serbia"
+    },
+    {
       "fixtureId": "wc2022-arg-fra",
       "home": "Argentina",
       "away": "France",

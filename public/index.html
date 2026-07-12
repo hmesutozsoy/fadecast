@@ -256,7 +256,8 @@ function upsertSignal(sig) {
   const s = rec.sig;
   const label = (matches.get(s.fixtureId) || {}).label || s.meta?.label || s.fixtureId;
   const statusCls = s.status === 'resolved' ? (s.pnl > 0 ? 'win' : 'loss') : '';
-  const statusTxt = s.status === 'resolved' ? (s.pnl > 0 ? '✓ won' : '✗ lost') : s.status;
+  const statusTxt = s.status === 'resolved' ? (s.pnl > 0 ? '✓ won' : s.stopped ? '✂ stopped' : '✗ lost')
+    : s.status === 'cancelled' ? '— passed' : s.status;
   const chain = s.chain?.explorer
     ? `<a href="${s.chain.explorer}" target="_blank">verify ↗</a>`
     : (s.chain ? 'queued' : '…');
@@ -310,6 +311,17 @@ es.addEventListener('published', e => {
   if (d.chain?.sig) $('t-chain').textContent = ++chainCount;
 });
 es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
+es.addEventListener('cancelled', e => {
+  const s = JSON.parse(e.data);
+  upsertSignal(s);
+  const open = openCards.get(s.id);
+  if (open) {
+    openCards.delete(s.id);
+    open.querySelector('.take').innerHTML = '🚷 No clean entry — the bot walked away. Discipline.';
+    open.classList.add('gone-left');
+    setTimeout(() => open.remove(), 300);
+  }
+});
 es.addEventListener('resolved', e => {
   const s = JSON.parse(e.data);
   upsertSignal(s);

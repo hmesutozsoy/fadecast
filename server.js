@@ -56,6 +56,7 @@ engine.on('signal', async signal => {
   broadcast('published', { id: signal.id, chain: signal.chain });
 });
 engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
+engine.on('cancelled', s => broadcast('cancelled', s));
 engine.on('resolved', s => {
   broadcast('resolved', s);
   broadcast('pnl', engine.state().pnl);

@@ -134,7 +134,11 @@ Replay src ──┘        │                            │
 
 - `lib/overshoot.js` — online port of a batch overshoot analyzer validated on
   real in-play data: jump detection (lookback/threshold/debounce), overshoot
-  tracking, entry/exit pricing with spread crossing.
+  tracking, entry/exit pricing with spread crossing. Three risk rules learned
+  from replaying real comebacks: only fade inside the 0.08–0.92 band (no
+  reversion room at the boundary), enter only after the cascade stops making
+  new extremes (never catch the falling knife), and a stop-loss for when the
+  "panic" turns out to be a comeback.
 - `lib/txline.js` — auth, snapshots, SSE client, tick normalization (de-vig),
   recorder.
 - `lib/replay.js` — deterministic fair-value + decaying-overshoot match
