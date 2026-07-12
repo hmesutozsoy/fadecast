@@ -19,6 +19,7 @@ import { ReplaySource, listMatches } from './lib/replay.js';
 import { TxLineClient } from './lib/txline.js';
 import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
+import { SocialOutbox } from './lib/social.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -31,6 +32,7 @@ const publisher = new SignalPublisher({
   enabled: PUBLISH
 });
 const pundit = new Pundit();
+const outbox = new SocialOutbox({ file: path.join(__dirname, 'data/outbox.jsonl') });
 const sseClients = new Set();
 const punditLog = [];
 let engine;          // recreated on every replay session
@@ -57,6 +59,7 @@ function wireEngine() {
     const rec = await publisher.publish(signal);
     signal.chain = { sig: rec.sig, explorer: rec.explorer, hash: publisher.hash(signal) };
     broadcast('published', { id: signal.id, chain: signal.chain });
+    broadcast('draft', outbox.call(signal));
   });
   engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
   engine.on('cancelled', s => broadcast('cancelled', s));
@@ -64,6 +67,7 @@ function wireEngine() {
     broadcast('resolved', s);
     broadcast('pnl', engine.state().pnl);
     commentate(pundit.resolved(s));
+    broadcast('draft', outbox.receipt(s));
   });
 }
 wireEngine();
@@ -151,8 +155,13 @@ const server = http.createServer(async (req, res) => {
       wallet: publisher.address,
       published: publisher.published.length,
       pundit: punditLog.slice(-20),
+      drafts: outbox.drafts.slice(-12),
       ...engine.state()
     }));
+  }
+  if (url.pathname === '/api/drafts') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(outbox.drafts));
   }
   if (url.pathname === '/api/matches') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

@@ -149,6 +149,23 @@ Replay src ──┘        │                            │
   upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
+## Social outbox — the agent feeds your feed
+
+Every call and every resolution is composed into a **ready-to-post tweet
+draft** in a fast, receipts-forward CT voice — the call *with its on-chain
+timestamp link*, then the win gloat or the owned loss. Nothing auto-posts, by
+design. Consume the drafts three ways:
+
+- the **Draft tweets** panel on the dashboard (one-click copy),
+- `GET /api/drafts` (JSON array),
+- tail `data/outbox.jsonl` — one draft per line:
+  `{id, kind: "call"|"receipt", text, signalId, label, explorer, ts}`.
+
+The JSONL is a stable contract for downstream agents — point a
+scout/writer-style social agent at it and FadeCast becomes a signal source for
+an AI-managed (human-approved) trading persona with a cryptographically
+auditable track record.
+
 ## How it scales
 
 - **Replay is the onboarding.** Any historical match is one JSON entry in

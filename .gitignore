@@ -2,4 +2,5 @@ node_modules/
 data/wallet.json
 data/credentials.json
 data/recording.jsonl
+data/outbox.jsonl
 .DS_Store

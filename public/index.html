@@ -82,6 +82,18 @@
   .pundit-box .line.hot .txt { color: var(--ink); }
   @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+  .draft { padding: 10px 12px; border-bottom: 1px solid var(--grid); animation: slideIn .3s ease; }
+  .draft:last-child { border-bottom: none; }
+  .draft .dtext { font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .draft .drow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .draft .dkind { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .draft .dkind.receipt { color: var(--good); border-color: var(--good); }
+  .draft button {
+    margin-left: auto; font: inherit; font-size: 11px; padding: 2px 10px; cursor: pointer;
+    background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--ink-2);
+  }
+  .draft button:hover { border-color: var(--series); color: var(--series); }
+
   .goal-badge {
     font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--page);
     background: var(--warning); border-radius: 4px; padding: 2px 6px; margin-left: 8px;
@@ -175,6 +187,8 @@
   <section>
     <h2>The Pundit 🎙</h2>
     <div class="pundit-box" id="pundit"><div class="empty">Mic check… waiting for kickoff.</div></div>
+    <h2 style="margin-top:16px">Draft tweets 📝 <span style="text-transform:none;letter-spacing:0">— feeds the CT agent, nothing auto-posts</span></h2>
+    <div class="pundit-box" id="drafts"><div class="empty">Calls become tweets here.</div></div>
   </section>
 </div>
 
@@ -353,6 +367,26 @@ function punditLine(line) {
   while (box.children.length > 30) box.lastChild.remove();
 }
 es.addEventListener('pundit', e => punditLine(JSON.parse(e.data)));
+
+let draftsEmpty = true;
+function draftLine(d) {
+  const box = $('drafts');
+  if (draftsEmpty) { box.innerHTML = ''; draftsEmpty = false; }
+  const el = document.createElement('div');
+  el.className = 'draft';
+  el.innerHTML = `
+    <div class="drow"><span class="dkind ${d.kind}">${d.kind}</span><button>copy</button></div>
+    <div class="dtext"></div>`;
+  el.querySelector('.dtext').textContent = d.text;
+  el.querySelector('button').addEventListener('click', ev => {
+    navigator.clipboard.writeText(d.text);
+    ev.target.textContent = 'copied ✓';
+    setTimeout(() => ev.target.textContent = 'copy', 1500);
+  });
+  box.prepend(el);
+  while (box.children.length > 12) box.lastChild.remove();
+}
+es.addEventListener('draft', e => draftLine(JSON.parse(e.data)));
 es.addEventListener('score', e => {
   const g = JSON.parse(e.data);
   const m = matches.get(g.fixtureId);
@@ -483,6 +517,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   (st.signals || []).forEach(upsertSignal);
   if (st.pnl) setPnl(st.pnl);
   (st.pundit || []).forEach(punditLine);
+  (st.drafts || []).forEach(draftLine);
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
 });
