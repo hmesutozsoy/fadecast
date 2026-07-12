@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FadeCast — provable panic trading</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 <style>
   :root {
     --page: #0d0d0d;
@@ -24,11 +25,15 @@
   body {
     background: var(--page); color: var(--ink);
     font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
-    padding: 20px; max-width: 1180px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+    padding: 24px; max-width: 1240px; margin: 0 auto;
   }
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
-  h1 { font-size: 22px; letter-spacing: 0.04em; }
-  h1 b { color: var(--series); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--baseline); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: 24px; letter-spacing: 0.05em; }
+  h1 b { color: var(--series); text-shadow: 0 0 24px rgba(57,135,229,0.55); }
   .tagline { color: var(--ink-2); }
   .chips { margin-left: auto; display: flex; gap: 8px; align-items: center; }
   .chip {
@@ -53,13 +58,17 @@
   .up .stage { color: var(--muted); font-size: 13px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; transition: border-color .2s, transform .2s; }
+  .tile:hover { border-color: var(--baseline); transform: translateY(-1px); }
   .tile .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
   .tile .v { font-size: 26px; margin-top: 2px; }
   .tile .v small { font-size: 13px; color: var(--ink-2); }
 
   .matches { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .2s, transform .2s; }
+  .match:hover { border-color: var(--series); transform: translateY(-2px); }
+  .match .hintplay { float: right; font-size: 10px; color: var(--muted); opacity: 0; transition: opacity .2s; }
+  .match:hover .hintplay { opacity: 1; }
   .match h3 { font-size: 14px; font-weight: 600; }
   .match .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .match .price { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; }
@@ -72,6 +81,8 @@
   section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
   table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   th, td { text-align: left; padding: 8px 12px; font-size: 13px; }
+  tbody tr { transition: background .15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.025); }
   th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--grid); }
   td { border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
   tr:last-child td { border-bottom: none; }
@@ -123,10 +134,34 @@
   .tile.win-pulse { animation: winPulse 1.4s ease; }
   @keyframes winPulse { 0% { box-shadow: none; } 25% { box-shadow: 0 0 0 2px var(--good), 0 0 26px rgba(12,163,12,.5); } 100% { box-shadow: none; } }
 
-  /* ---- swipe cards ---- */
-  #cards { position: fixed; right: 24px; bottom: 24px; width: 300px; z-index: 20; }
+  /* ---- quick bet ---- */
+  #betcard {
+    position: fixed; right: 24px; bottom: 24px; width: 260px; z-index: 19;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; box-shadow: 0 10px 32px rgba(0,0,0,.5);
+  }
+  #betcard .bhead { font-size: 13px; font-weight: 700; letter-spacing: .04em; display: flex; }
+  #betcard .bhead span { margin-left: auto; color: var(--good); font-variant-numeric: tabular-nums; }
+  #betcard .bmatch { font-size: 12.5px; color: var(--ink-2); margin: 8px 0 10px; font-variant-numeric: tabular-nums; }
+  #betcard .bbtns { display: flex; gap: 8px; }
+  #betcard .bbtns button {
+    flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid var(--border);
+    background: none; color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  #betcard .bbtns button:hover:not(:disabled) { border-color: var(--series); color: var(--series); }
+  #betcard .bbtns button:disabled { opacity: .4; cursor: default; }
+  #betcard .bpos { font-size: 12.5px; color: var(--ink-2); margin-top: 10px; font-variant-numeric: tabular-nums; }
+  #betcard .bpos:empty { display: none; }
+  #betcard .bpos button {
+    margin-top: 6px; width: 100%; padding: 6px 0; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--warning); color: var(--warning); background: none; font: inherit; font-size: 12px;
+  }
+
+  /* ---- swipe cards (bottom-left; quick bet owns bottom-right) ---- */
+  #cards { position: fixed; left: 24px; bottom: 24px; width: 300px; z-index: 20; }
   .card {
-    position: absolute; right: 0; bottom: 0; width: 300px;
+    position: absolute; left: 0; bottom: 0; width: 300px;
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 16px; cursor: grab; user-select: none; touch-action: none;
     box-shadow: 0 12px 40px rgba(0,0,0,.55);
@@ -196,20 +231,31 @@
       <a id="xlink" href="https://x.com/search?q=World%20Cup&f=live" target="_blank"
          style="float:right;font-size:11px;text-transform:none;letter-spacing:0">see the posts on 𝕏 ↗</a></h2>
     <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
-    <h2 style="margin-top:16px">Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
-    <div class="pundit-box" id="fadeboard" style="max-height:180px"><div class="empty">No receipts yet.</div></div>
-    <h2 style="margin-top:16px">Signal feed</h2>
-    <table>
-      <thead><tr>
-        <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
-      </tr></thead>
-      <tbody id="feed"><tr><td colspan="8" class="empty">Waiting for market panic…</td></tr></tbody>
-    </table>
   </section>
   <section>
-    <h2>The Pundit 🎙</h2>
-    <div class="pundit-box" id="pundit"><div class="empty">Mic check… waiting for kickoff.</div></div>
+    <h2>Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
+    <div class="pundit-box" id="fadeboard" style="max-height:420px"><div class="empty">No receipts yet.</div></div>
   </section>
+</div>
+
+<section style="margin-top:16px">
+  <h2>Signal feed</h2>
+  <table>
+    <thead><tr>
+      <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
+    </tr></thead>
+    <tbody id="feed"><tr><td colspan="8" class="empty">Waiting for market panic…</td></tr></tbody>
+  </table>
+</section>
+
+<div id="betcard">
+  <div class="bhead">🎟 Quick bet <span id="bank">100 pts</span></div>
+  <div class="bmatch" id="bet-label">waiting for a market…</div>
+  <div class="bbtns" id="bet-btns">
+    <button id="bet-home">—</button>
+    <button id="bet-away">—</button>
+  </div>
+  <div class="bpos" id="bet-pos"></div>
 </div>
 
 <script>
@@ -222,6 +268,11 @@ function matchCard(fixtureId, label) {
   if (m) return m;
   const el = document.createElement('div');
   el.className = 'match';
+  el.title = 'click to replay this match from kickoff';
+  el.addEventListener('click', async () => {
+    await fetch(`/api/replay?match=${encodeURIComponent(fixtureId)}`);
+    location.replace(location.pathname + '?s=' + Date.now());
+  });
   el.innerHTML = `
     <div class="row"><h3>${label || fixtureId}</h3><span class="price">—</span></div>
     <canvas width="600" height="180"></canvas>
@@ -340,6 +391,9 @@ es.addEventListener('tick', e => {
   if (m.series.length > 400) m.series.shift();
   m.price.textContent = `P(home) ${t.price.toFixed(3)}`;
   draw(m);
+  curPrice.set(t.fixtureId, t.price);
+  if (!featured) featured = t.fixtureId;
+  if (t.fixtureId === featured || (pos && t.fixtureId === pos.fixtureId)) betRender();
 });
 es.addEventListener('signal', e => {
   const s = JSON.parse(e.data);
@@ -379,18 +433,7 @@ es.addEventListener('resolved', e => {
 });
 es.addEventListener('pnl', e => setPnl(JSON.parse(e.data)));
 
-// ---- pundit & drama ----
-let punditEmpty = true;
-function punditLine(line) {
-  const box = $('pundit');
-  if (punditEmpty) { box.innerHTML = ''; punditEmpty = false; }
-  const el = document.createElement('div');
-  el.className = 'line' + (line.kind === 'signal_high' || line.kind === 'win' ? ' hot' : '');
-  el.innerHTML = `<span class="mood">${line.mood}</span><span class="txt">${line.text}</span>`;
-  box.prepend(el);
-  while (box.children.length > 30) box.lastChild.remove();
-}
-es.addEventListener('pundit', e => punditLine(JSON.parse(e.data)));
+// pundit commentary is API-only now (feeds /api/drafts); no dashboard panel
 
 // drafts are API-only now: GET /api/drafts or tail data/outbox.jsonl
 
@@ -612,6 +655,71 @@ $('connect').addEventListener('click', async () => {
   }
 });
 
+// ---- quick bet: virtual bankroll, client-side, zero wallet friction ----
+let bank = Number(localStorage.getItem('fc_bank') || 100);
+let pos = JSON.parse(localStorage.getItem('fc_pos') || 'null');
+let featured = null;                 // first market seen this session
+const curPrice = new Map();
+const STAKE = 10;
+
+function bankSave() {
+  localStorage.setItem('fc_bank', bank);
+  localStorage.setItem('fc_pos', JSON.stringify(pos));
+  $('bank').textContent = `${bank.toFixed(1)} pts`;
+}
+function posValue() {
+  const p = curPrice.get(pos.fixtureId);
+  if (p == null) return null;
+  const val = pos.side === 'home' ? p : 1 - p;
+  return pos.stake * (val - pos.entry) / pos.entry;
+}
+function betRender() {
+  const homeBtn = $('bet-home'), awayBtn = $('bet-away');
+  if (pos) {
+    const pnl = posValue();
+    $('bet-label').textContent = pos.label;
+    homeBtn.disabled = awayBtn.disabled = true;
+    homeBtn.textContent = 'position'; awayBtn.textContent = 'open';
+    $('bet-pos').innerHTML = pnl == null
+      ? `${pos.stake} pts on <b>${pos.side.toUpperCase()}</b> @ ${pos.entry.toFixed(2)} · waiting for prices…`
+      : `${pos.stake} pts on <b>${pos.side.toUpperCase()}</b> @ ${pos.entry.toFixed(2)} ·
+         <span class="${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)} pts</span>
+         <button id="cashout">💰 Cash out</button>`;
+    const co = $('cashout');
+    if (co) co.addEventListener('click', () => {
+      bank += pos.stake + (posValue() ?? 0);
+      pos = null; bankSave(); betRender();
+    });
+    return;
+  }
+  $('bet-pos').innerHTML = '';
+  const p = featured ? curPrice.get(featured) : null;
+  if (p == null) {
+    $('bet-label').textContent = 'waiting for a market…';
+    homeBtn.disabled = awayBtn.disabled = true;
+    homeBtn.textContent = '—'; awayBtn.textContent = '—';
+    return;
+  }
+  const m = matches.get(featured);
+  $('bet-label').textContent = `${m?.label || featured} — live`;
+  const ok = bank >= STAKE;
+  homeBtn.disabled = awayBtn.disabled = !ok;
+  homeBtn.textContent = `Home @ ${p.toFixed(2)}`;
+  awayBtn.textContent = `Away @ ${(1 - p).toFixed(2)}`;
+}
+function placeBet(side) {
+  const p = curPrice.get(featured);
+  if (pos || p == null || bank < STAKE) return;
+  const entry = side === 'home' ? p : 1 - p;
+  if (entry < 0.03) return;          // nothing to win at the boundary
+  bank -= STAKE;
+  pos = { fixtureId: featured, side, entry, stake: STAKE, label: matches.get(featured)?.label || featured };
+  bankSave(); betRender();
+}
+$('bet-home').addEventListener('click', () => placeBet('home'));
+$('bet-away').addEventListener('click', () => placeBet('away'));
+bankSave();
+
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {
   for (const [fid, m] of Object.entries(st.matches || {})) {
@@ -622,7 +730,6 @@ fetch('/api/state').then(r => r.json()).then(st => {
   }
   (st.signals || []).forEach(upsertSignal);
   if (st.pnl) setPnl(st.pnl);
-  (st.pundit || []).forEach(punditLine);
   ((st.crowd || {}).takes || []).forEach(takeLine);
   fadeboard(((st.crowd || {}).leaderboard) || []);
   $('t-chain').textContent = st.published || 0;

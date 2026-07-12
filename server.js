@@ -25,7 +25,7 @@ import { Crowd } from './lib/crowd.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
 const PORT = Number(process.env.PORT || 4747);
-const SPEED = Number(process.env.SPEED || 25); // replay: match-seconds per second
+const SPEED = Number(process.env.SPEED || 40); // replay: match-seconds per second
 const PUBLISH = process.env.PUBLISH !== '0';   // PUBLISH=0 to disable on-chain writes
 
 const publisher = new SignalPublisher({
@@ -76,6 +76,18 @@ function wireEngine() {
   });
 }
 wireEngine();
+
+// ambient timeline chatter: a take every 10-20s (randomized) while a replay runs
+(function ambientLoop() {
+  setTimeout(() => {
+    if (MODE === 'replay' && currentSrc && !currentSrc.stopped && engine.series.size) {
+      const all = [...engine.series.values()];
+      const s = all[Math.floor(Math.random() * all.length)];
+      crowd.ambient({ fixtureId: s.fixtureId, meta: s.meta });
+    }
+    ambientLoop();
+  }, 10_000 + Math.random() * 10_000);
+})();
 
 // devnet faucet rate-limits: retry funding + flush queued commitments
 setInterval(async () => {
