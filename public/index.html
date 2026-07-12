@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FadeCast — provable panic trading</title>
+<style>
+  :root {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series: #3987e5;      /* categorical slot 1, dark step */
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--page); color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 20px; max-width: 1180px; margin: 0 auto;
+  }
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 22px; letter-spacing: 0.04em; }
+  h1 b { color: var(--series); }
+  .tagline { color: var(--ink-2); }
+  .chips { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .chip {
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+    color: var(--ink-2); font-size: 12px; background: var(--surface);
+  }
+  .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .tile .v { font-size: 26px; margin-top: 2px; }
+  .tile .v small { font-size: 13px; color: var(--ink-2); }
+
+  .matches { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .match h3 { font-size: 14px; font-weight: 600; }
+  .match .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .match .price { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; }
+  .match canvas { width: 100%; height: 90px; display: block; }
+  .panic-wrap { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .panic-bar { flex: 1; height: 6px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+  .panic-fill { height: 100%; width: 0%; border-radius: 4px; background: var(--good); transition: width .6s, background .6s; }
+  .panic-label { font-size: 12px; color: var(--ink-2); min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; font-size: 13px; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--grid); }
+  td { border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .side { font-weight: 600; }
+  .status { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); }
+  .status.win { color: var(--good); border-color: var(--good); }
+  .status.loss { color: var(--critical); border-color: var(--critical); }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .empty { color: var(--muted); padding: 18px; text-align: center; }
+  .pnl-pos { color: var(--good); } .pnl-neg { color: var(--critical); }
+  @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>FADE<b>CAST</b></h1>
+  <span class="tagline">the AI pundit that can’t lie about its record</span>
+  <div class="chips">
+    <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
+    <span class="chip" id="wallet" title="agent wallet (devnet)">wallet: —</span>
+  </div>
+</header>
+<p class="sub">TxLINE StablePrice odds → overshoot detection → fade signal committed to Solana devnet <em>before</em> resolution.</p>
+
+<div class="tiles">
+  <div class="tile"><div class="k">Signals fired</div><div class="v" id="t-signals">0</div></div>
+  <div class="tile"><div class="k">Win rate</div><div class="v" id="t-winrate">—</div></div>
+  <div class="tile"><div class="k">Cumulative P&amp;L</div><div class="v" id="t-pnl">0.0<small> pts</small></div></div>
+  <div class="tile"><div class="k">On-chain commits</div><div class="v" id="t-chain">0</div></div>
+</div>
+
+<div class="matches" id="matches"></div>
+
+<section>
+  <h2>Signal feed</h2>
+  <table>
+    <thead><tr>
+      <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
+    </tr></thead>
+    <tbody id="feed"><tr><td colspan="8" class="empty">Waiting for market panic…</td></tr></tbody>
+  </table>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const matches = new Map();   // fixtureId -> {el, canvas, series: [[t,p]...], label, panic, panicT}
+const signals = new Map();   // id -> {row, sig}
+
+function matchCard(fixtureId, label) {
+  let m = matches.get(fixtureId);
+  if (m) return m;
+  const el = document.createElement('div');
+  el.className = 'match';
+  el.innerHTML = `
+    <div class="row"><h3>${label || fixtureId}</h3><span class="price">—</span></div>
+    <canvas width="600" height="180"></canvas>
+    <div class="panic-wrap">
+      <div class="panic-bar"><div class="panic-fill"></div></div>
+      <div class="panic-label">calm</div>
+    </div>`;
+  $('matches').appendChild(el);
+  m = { el, canvas: el.querySelector('canvas'), price: el.querySelector('.price'),
+        fill: el.querySelector('.panic-fill'), plabel: el.querySelector('.panic-label'),
+        series: [], panic: 0, panicT: 0 };
+  matches.set(fixtureId, m);
+  return m;
+}
+
+function draw(m) {
+  const c = m.canvas, ctx = c.getContext('2d');
+  const W = c.width, H = c.height, pad = 6;
+  ctx.clearRect(0, 0, W, H);
+  const pts = m.series;
+  if (pts.length < 2) return;
+  const t0 = pts[0][0], t1 = pts[pts.length - 1][0] || 1;
+  // fixed probability scale segment around the data, min 0.2 tall, clamped to [0,1]
+  let lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
+  const mid = (lo + hi) / 2, half = Math.max(0.1, (hi - lo) / 2 + 0.02);
+  lo = Math.max(0, mid - half); hi = Math.min(1, mid + half);
+  const X = t => pad + (W - 2 * pad) * (t - t0) / Math.max(1, t1 - t0);
+  const Y = p => H - pad - (H - 2 * pad) * (p - lo) / (hi - lo);
+  // hairline gridlines at quarter marks
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid');
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath(); ctx.moveTo(pad, pad + i * (H - 2 * pad) / 4); ctx.lineTo(W - pad, pad + i * (H - 2 * pad) / 4); ctx.stroke();
+  }
+  // the price line — 2px equivalent at this backing scale
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--series');
+  ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach(([t, p], i) => i ? ctx.lineTo(X(t), Y(p)) : ctx.moveTo(X(t), Y(p)));
+  ctx.stroke();
+}
+
+function setPanic(m, score) {
+  m.panic = score; m.panicT = Date.now();
+  render(m);
+}
+function render(m) {
+  const s = m.panic;
+  m.fill.style.width = `${s}%`;
+  const [color, word] = s >= 70 ? ['var(--critical)', 'PANIC'] :
+                        s >= 40 ? ['var(--serious)', 'overheating'] :
+                        s > 0   ? ['var(--warning)', 'stirring'] : ['var(--good)', 'calm'];
+  m.fill.style.background = color;
+  m.plabel.textContent = s > 0 ? `${word} · ${s}` : 'calm';
+}
+setInterval(() => { // panic cools off over ~40s
+  for (const m of matches.values()) if (m.panic > 0 && Date.now() - m.panicT > 4000) {
+    m.panic = Math.max(0, m.panic - 4); render(m);
+  }
+}, 1500);
+
+function mmss(t) { const x = Math.round(t); return `${String(Math.floor(x / 60)).padStart(2, '0')}'`; }
+
+function upsertSignal(sig) {
+  let rec = signals.get(sig.id);
+  if (!rec) {
+    if (signals.size === 0) $('feed').innerHTML = '';
+    const row = document.createElement('tr');
+    $('feed').prepend(row);
+    rec = { row }; signals.set(sig.id, rec);
+  }
+  rec.sig = { ...rec.sig, ...sig };
+  const s = rec.sig;
+  const label = (matches.get(s.fixtureId) || {}).label || s.meta?.label || s.fixtureId;
+  const statusCls = s.status === 'resolved' ? (s.pnl > 0 ? 'win' : 'loss') : '';
+  const statusTxt = s.status === 'resolved' ? (s.pnl > 0 ? '✓ won' : '✗ lost') : s.status;
+  const chain = s.chain?.explorer
+    ? `<a href="${s.chain.explorer}" target="_blank">verify ↗</a>`
+    : (s.chain ? 'queued' : '…');
+  rec.row.innerHTML = `
+    <td>${mmss(s.detT)}</td><td>${label}</td>
+    <td class="side">${s.side.split(' ')[0]}</td>
+    <td>${s.pre.toFixed(3)} → ${s.det.toFixed(3)}</td>
+    <td>${s.panic}</td>
+    <td><span class="status ${statusCls}">${statusTxt}</span></td>
+    <td class="${s.pnl > 0 ? 'pnl-pos' : s.pnl < 0 ? 'pnl-neg' : ''}">${s.pnl == null ? '—' : (s.pnl > 0 ? '+' : '') + (s.pnl * 100).toFixed(1)}</td>
+    <td>${chain}</td>`;
+}
+
+function setPnl(p) {
+  $('t-signals').textContent = signals.size;
+  $('t-winrate').textContent = p.n ? `${Math.round(100 * p.wins / p.n)}%` : '—';
+  const el = $('t-pnl');
+  el.innerHTML = `${p.total > 0 ? '+' : ''}${(p.total * 100).toFixed(1)}<small> pts</small>`;
+  el.className = 'v ' + (p.total > 0 ? 'pnl-pos' : p.total < 0 ? 'pnl-neg' : '');
+}
+
+// ---- live wiring ----
+const es = new EventSource('/api/events');
+let chainCount = 0;
+es.addEventListener('hello', e => {
+  const d = JSON.parse(e.data);
+  $('mode').innerHTML = `<span class="dot"></span>${d.mode} mode`;
+  $('wallet').textContent = `wallet: ${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`;
+});
+es.addEventListener('tick', e => {
+  const t = JSON.parse(e.data);
+  const m = matchCard(t.fixtureId, t.label || t.fixtureId);
+  if (t.label && m.label !== t.label) { m.label = t.label; m.el.querySelector('h3').textContent = t.label; }
+  m.series.push([t.ts, t.price]);
+  if (m.series.length > 400) m.series.shift();
+  m.price.textContent = `P(home) ${t.price.toFixed(3)}`;
+  draw(m);
+});
+es.addEventListener('signal', e => {
+  const s = JSON.parse(e.data);
+  const m = matchCard(s.fixtureId, s.meta?.label || s.fixtureId);
+  if (s.meta?.label) { m.label = s.meta.label; m.el.querySelector('h3').textContent = s.meta.label; }
+  setPanic(m, s.panic);
+  upsertSignal(s);
+  $('t-signals').textContent = signals.size;
+});
+es.addEventListener('published', e => {
+  const d = JSON.parse(e.data);
+  const rec = signals.get(d.id);
+  if (rec) { rec.sig.chain = d.chain; upsertSignal(rec.sig); }
+  if (d.chain?.sig) $('t-chain').textContent = ++chainCount;
+});
+es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
+es.addEventListener('resolved', e => upsertSignal(JSON.parse(e.data)));
+es.addEventListener('pnl', e => setPnl(JSON.parse(e.data)));
+
+// initial state (page reload mid-run)
+fetch('/api/state').then(r => r.json()).then(st => {
+  for (const [fid, m] of Object.entries(st.matches || {})) {
+    const card = matchCard(fid, m.meta?.label || fid);
+    card.series = m.outcomes.home || Object.values(m.outcomes)[0] || [];
+    if (m.meta?.label) card.el.querySelector('h3').textContent = m.meta.label;
+    draw(card);
+  }
+  (st.signals || []).forEach(upsertSignal);
+  if (st.pnl) setPnl(st.pnl);
+  $('t-chain').textContent = st.published || 0;
+  chainCount = st.published || 0;
+});
+</script>
+</body>
+</html>

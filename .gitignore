@@ -1,0 +1,5 @@
+node_modules/
+data/wallet.json
+data/credentials.json
+data/recording.jsonl
+.DS_Store

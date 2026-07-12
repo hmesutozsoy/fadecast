@@ -1,0 +1,21 @@
+{
+  "name": "fadecast",
+  "version": "0.1.0",
+  "description": "Autonomous World Cup panic-fade agent with a provable on-chain track record. TxLINE live odds in, fade signals on Solana out.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "replay": "MODE=replay node server.js",
+    "live": "MODE=live node server.js",
+    "subscribe": "node scripts/subscribe.js"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.95.0"
+  },
+  "optionalDependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/spl-token": "^0.4.8",
+    "tweetnacl": "^1.0.3"
+  }
+}
