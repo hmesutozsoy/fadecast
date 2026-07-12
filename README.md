@@ -149,6 +149,29 @@ Replay src ──┘        │                            │
   upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
+## How it scales
+
+- **Replay is the onboarding.** Any historical match is one JSON entry in
+  `data/matches.json`; the header picker replays it on demand
+  (`GET /api/replay?match=<id>&speed=N`). A library of history's great market
+  panics — every famous collapse becomes shareable, replayable content.
+- **The detector shards by series.** Each `(market, outcome)` series is
+  independent state with bounded memory (ticks and signals are trimmed; the
+  strategy only ever looks back `lookback + confirm + hold` seconds). N markets
+  = N tiny state machines; shard them across workers by market id with no
+  coordination needed.
+- **One engine, many viewers.** The dashboard is a broadcast: a single
+  detector fans out over SSE to any number of spectators (swap in Redis
+  pub/sub for multi-instance fan-out). Everyone watches the same panic
+  together — watch-party semantics by design.
+- **On-chain commitments batch.** Per-signal memo transactions are perfect for
+  the demo; at volume, batch a window of signals into one transaction carrying
+  a Merkle root of their hashes — same auditability, 1/N the fees.
+- **Any market, same pipeline.** TxLINE's paid tiers expose 1000+ leagues —
+  every one of them is just more series keys. And the `MODE=follow` adapter
+  means non-sports probability markets (elections, crypto, esports) plug in
+  with zero engine changes.
+
 ## Honest limitations
 
 - Free-tier devnet odds coverage can be sparse outside match windows — the

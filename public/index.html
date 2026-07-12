@@ -36,6 +36,9 @@
     color: var(--ink-2); font-size: 12px; background: var(--surface);
   }
   .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
+  select.chip, button.chip { font: inherit; font-size: 12px; appearance: none; -webkit-appearance: none; }
+  select.chip { max-width: 210px; text-overflow: ellipsis; }
+  button.chip:hover { border-color: var(--series); color: var(--series); }
   .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
@@ -137,6 +140,10 @@
   <h1>FADE<b>CAST</b></h1>
   <span class="tagline">the AI pundit that can’t lie about its record</span>
   <div class="chips">
+    <select id="pick" class="chip" title="replay a real World Cup match">
+      <option value="all">▶ Replay: all matches</option>
+    </select>
+    <button id="go" class="chip" style="cursor:pointer">Start</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
     <span class="chip" id="wallet" title="agent wallet (devnet)">wallet: —</span>
   </div>
@@ -450,6 +457,20 @@ function settleCard(s) {
   if (pick && ((pick === 'fade' && botRight) || (pick === 'ride' && !botRight))) duel.you++;
   duelRender();
 }
+
+// ---- replay picker ----
+fetch('/api/matches').then(r => r.json()).then(list => {
+  for (const m of list) {
+    const o = document.createElement('option');
+    o.value = m.fixtureId;
+    o.textContent = `▶ ${m.label} (${m.result})`;
+    $('pick').appendChild(o);
+  }
+});
+$('go').addEventListener('click', async () => {
+  await fetch(`/api/replay?match=${encodeURIComponent($('pick').value)}`);
+  location.reload();
+});
 
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {

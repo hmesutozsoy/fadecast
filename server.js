@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OvershootEngine } from './lib/overshoot.js';
-import { ReplaySource } from './lib/replay.js';
+import { ReplaySource, listMatches } from './lib/replay.js';
 import { TxLineClient } from './lib/txline.js';
 import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
@@ -26,7 +26,6 @@ const PORT = Number(process.env.PORT || 4747);
 const SPEED = Number(process.env.SPEED || 25); // replay: match-seconds per second
 const PUBLISH = process.env.PUBLISH !== '0';   // PUBLISH=0 to disable on-chain writes
 
-const engine = new OvershootEngine();
 const publisher = new SignalPublisher({
   walletPath: path.join(__dirname, 'data/wallet.json'),
   enabled: PUBLISH
@@ -34,6 +33,8 @@ const publisher = new SignalPublisher({
 const pundit = new Pundit();
 const sseClients = new Set();
 const punditLog = [];
+let engine;          // recreated on every replay session
+let currentSrc = null;
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -47,21 +48,25 @@ async function commentate(promise) {
   broadcast('pundit', line);
 }
 
-engine.on('tick', t => broadcast('tick', t));
-engine.on('signal', async signal => {
-  broadcast('signal', signal);
-  commentate(pundit.signal(signal));
-  const rec = await publisher.publish(signal);
-  signal.chain = { sig: rec.sig, explorer: rec.explorer, hash: publisher.hash(signal) };
-  broadcast('published', { id: signal.id, chain: signal.chain });
-});
-engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
-engine.on('cancelled', s => broadcast('cancelled', s));
-engine.on('resolved', s => {
-  broadcast('resolved', s);
-  broadcast('pnl', engine.state().pnl);
-  commentate(pundit.resolved(s));
-});
+function wireEngine() {
+  engine = new OvershootEngine();
+  engine.on('tick', t => broadcast('tick', t));
+  engine.on('signal', async signal => {
+    broadcast('signal', signal);
+    commentate(pundit.signal(signal));
+    const rec = await publisher.publish(signal);
+    signal.chain = { sig: rec.sig, explorer: rec.explorer, hash: publisher.hash(signal) };
+    broadcast('published', { id: signal.id, chain: signal.chain });
+  });
+  engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
+  engine.on('cancelled', s => broadcast('cancelled', s));
+  engine.on('resolved', s => {
+    broadcast('resolved', s);
+    broadcast('pnl', engine.state().pnl);
+    commentate(pundit.resolved(s));
+  });
+}
+wireEngine();
 
 // devnet faucet rate-limits: retry funding + flush queued commitments
 setInterval(async () => {
@@ -75,15 +80,19 @@ setInterval(async () => {
 
 // ---- data sources -----------------------------------------------------------
 
-async function startReplay() {
-  const recording = fs.existsSync(path.join(__dirname, 'data/recording.jsonl'))
+async function startReplay({ only = null, speed = SPEED } = {}) {
+  if (currentSrc) currentSrc.stop();
+  wireEngine();               // fresh session: new engine, clean stats
+  punditLog.length = 0;
+  const recording = !only && fs.existsSync(path.join(__dirname, 'data/recording.jsonl'))
     ? path.join(__dirname, 'data/recording.jsonl') : null;
-  const src = new ReplaySource({ speed: SPEED, recording });
+  const src = new ReplaySource({ speed, recording, only });
+  currentSrc = src;
   src.on('tick', t => engine.addTick(t));
   src.on('score', g => { broadcast('score', g); commentate(pundit.goal(g)); });
   src.on('end', () => broadcast('status', { mode: MODE, note: 'replay finished' }));
   src.start();
-  console.log(`[fadecast] replay mode (${recording ? 'recorded ticks' : 'synthetic matches'}, ${SPEED}x)`);
+  console.log(`[fadecast] replay (${recording ? 'recorded ticks' : only || 'all matches'}, ${speed}x)`);
 }
 
 async function startLive() {
@@ -144,6 +153,17 @@ const server = http.createServer(async (req, res) => {
       pundit: punditLog.slice(-20),
       ...engine.state()
     }));
+  }
+  if (url.pathname === '/api/matches') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(listMatches()));
+  }
+  if (url.pathname === '/api/replay' && MODE === 'replay') {
+    const only = url.searchParams.get('match') || null;
+    const speed = Number(url.searchParams.get('speed')) || SPEED;
+    startReplay({ only: only === 'all' ? null : only, speed });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, only, speed }));
   }
   if (url.pathname === '/api/events') {
     res.writeHead(200, {
