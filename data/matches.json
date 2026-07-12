@@ -1,0 +1,54 @@
+{
+  "source": "FIFA World Cup 2022 — real fixtures, goal minutes, scorers, and results. Pre-match win probabilities approximated from closing odds. Price paths are modeled from these real events (replace with recorded TxLINE ticks via MODE=record).",
+  "matches": [
+    {
+      "fixtureId": "wc2022-arg-ksa",
+      "home": "Argentina",
+      "away": "Saudi Arabia",
+      "p0": 0.86,
+      "goals": [
+        { "min": 10, "team": "home", "scorer": "Messi (pen)" },
+        { "min": 48, "team": "away", "scorer": "Al-Shehri" },
+        { "min": 53, "team": "away", "scorer": "Al-Dawsari" }
+      ],
+      "result": "Argentina 1–2 Saudi Arabia"
+    },
+    {
+      "fixtureId": "wc2022-ger-jpn",
+      "home": "Germany",
+      "away": "Japan",
+      "p0": 0.71,
+      "goals": [
+        { "min": 33, "team": "home", "scorer": "Gündoğan (pen)" },
+        { "min": 75, "team": "away", "scorer": "Doan" },
+        { "min": 83, "team": "away", "scorer": "Asano" }
+      ],
+      "result": "Germany 1–2 Japan"
+    },
+    {
+      "fixtureId": "wc2022-jpn-esp",
+      "home": "Japan",
+      "away": "Spain",
+      "p0": 0.16,
+      "goals": [
+        { "min": 11, "team": "away", "scorer": "Morata" },
+        { "min": 48, "team": "home", "scorer": "Doan" },
+        { "min": 51, "team": "home", "scorer": "Tanaka" }
+      ],
+      "result": "Japan 2–1 Spain"
+    },
+    {
+      "fixtureId": "wc2022-arg-fra",
+      "home": "Argentina",
+      "away": "France",
+      "p0": 0.45,
+      "goals": [
+        { "min": 23, "team": "home", "scorer": "Messi (pen)" },
+        { "min": 36, "team": "home", "scorer": "Di María" },
+        { "min": 80, "team": "away", "scorer": "Mbappé (pen)" },
+        { "min": 81, "team": "away", "scorer": "Mbappé" }
+      ],
+      "result": "Argentina 3–3 France (AET), Argentina won 4–2 on penalties"
+    }
+  ]
+}

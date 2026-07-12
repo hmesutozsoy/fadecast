@@ -47,18 +47,52 @@ record from the chain and integrity-check it against the off-chain data via the
 memo hash. TxLINE's validation proofs anchor the *input* data on-chain;
 FadeCast anchors the *decisions*.
 
+## Swipe the panic — you vs the bot
+
+Every signal also lands as a **swipeable card**: drag right to *Fade with the
+bot*, left to *Ride the wave* with the crowd. When the signal resolves, the
+**You vs the bot** scoreboard settles who read the market better. No wallet,
+no stake, no onboarding — anyone watching a match can play against the agent
+in one gesture. (Too slow to swipe? The market doesn't wait, and neither does
+the card.)
+
+## Real matches
+
+Replay mode runs **real FIFA World Cup 2022 fixtures** from
+[data/matches.json](data/matches.json) — actual goal minutes, scorers, and
+results: Argentina 1–2 Saudi Arabia (the canonical market-panic event),
+Germany 1–2 Japan, Japan 2–1 Spain, and the Argentina–France final. The goals
+are history; the price path between them is modeled from those events, and is
+replaced by genuine recorded TxLINE ticks the moment you run `MODE=record`
+during a live match (replay auto-prefers a recording).
+
+## Not just football
+
+The detector is market-agnostic: it consumes any probability series and trades
+the overreaction. The tick contract is one JSON object:
+
+```json
+{"fixtureId": "btc-100k-by-dec", "outcome": "yes", "price": 0.62, "ts": 1752300000, "meta": {"label": "BTC $100k by Dec"}}
+```
+
+`MODE=follow FILE=feed.jsonl` tails any file of those lines — a crypto
+prediction market, an election market, esports win probability — and the whole
+pipeline (panic meter, fade signals, on-chain commitments, the Pundit, swipe
+cards) works unchanged. World Cup is the launch vertical, not the product.
+
 ## Running it
 
 ```bash
 npm install
-npm run replay     # deterministic demo: 3 synthetic matches at 40x speed
+npm run replay     # real WC2022 matches at 25x speed (default)
 npm run live       # real TxLINE streams (requires activation, below)
+MODE=follow FILE=feed.jsonl npm start   # any market, via JSONL ticks
 ```
 
 Dashboard: http://localhost:4747
 
 Env knobs: `PORT`, `SPEED` (replay acceleration), `PUBLISH=0` (skip on-chain
-writes), `TXLINE_NETWORK=mainnet|devnet`.
+writes), `TXLINE_NETWORK=mainnet|devnet`, `ANTHROPIC_API_KEY` (live Pundit).
 
 ### Live mode: TxLINE free-tier activation
 

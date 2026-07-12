@@ -38,7 +38,7 @@
   .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
   .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
 
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .tile .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
   .tile .v { font-size: 26px; margin-top: 2px; }
@@ -95,7 +95,40 @@
   .tile.win-pulse { animation: winPulse 1.4s ease; }
   @keyframes winPulse { 0% { box-shadow: none; } 25% { box-shadow: 0 0 0 2px var(--good), 0 0 26px rgba(12,163,12,.5); } 100% { box-shadow: none; } }
 
-  @media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } }
+  /* ---- swipe cards ---- */
+  #cards { position: fixed; right: 24px; bottom: 24px; width: 300px; z-index: 20; }
+  .card {
+    position: absolute; right: 0; bottom: 0; width: 300px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; cursor: grab; user-select: none; touch-action: none;
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    transition: transform .25s ease, opacity .25s ease;
+  }
+  .card.dragging { transition: none; cursor: grabbing; }
+  .card .alert { font-size: 11px; letter-spacing: .12em; color: var(--critical); font-weight: 700; margin-bottom: 6px; }
+  .card h4 { font-size: 16px; margin-bottom: 8px; }
+  .card .jump { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 14px; margin-bottom: 8px; }
+  .card .take { font-size: 13px; color: var(--ink-2); line-height: 1.45; margin-bottom: 12px; }
+  .card .panic-bar { margin-bottom: 12px; }
+  .card .actions { display: flex; gap: 8px; }
+  .card .actions button {
+    flex: 1; padding: 9px 0; border-radius: 8px; border: 1px solid var(--border);
+    background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .card .actions .ride:hover { border-color: var(--warning); color: var(--warning); }
+  .card .actions .fade:hover { border-color: var(--series); color: var(--series); }
+  .card .stamp {
+    position: absolute; top: 14px; right: 14px; font-weight: 800; font-size: 18px;
+    letter-spacing: .08em; padding: 3px 10px; border-radius: 6px; border: 2.5px solid;
+    transform: rotate(9deg); opacity: 0; pointer-events: none;
+  }
+  .card .stamp.fade { color: var(--series); border-color: var(--series); }
+  .card .stamp.ride { color: var(--warning); border-color: var(--warning); }
+  .card.gone-right { transform: translateX(420px) rotate(18deg); opacity: 0; }
+  .card.gone-left { transform: translateX(-420px) rotate(-18deg); opacity: 0; }
+  .card .hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  @media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } #cards { width: 260px; right: 12px; bottom: 12px; } .card { width: 260px; } }
   @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
@@ -115,7 +148,10 @@
   <div class="tile"><div class="k">Win rate</div><div class="v" id="t-winrate">—</div></div>
   <div class="tile"><div class="k">Cumulative P&amp;L</div><div class="v" id="t-pnl">0.0<small> pts</small></div></div>
   <div class="tile"><div class="k">On-chain commits</div><div class="v" id="t-chain">0</div></div>
+  <div class="tile"><div class="k">You vs the bot</div><div class="v" id="t-duel">0 <small>–</small> 0</div></div>
 </div>
+
+<div id="cards"></div>
 
 <div class="matches" id="matches"></div>
 
@@ -277,6 +313,7 @@ es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
 es.addEventListener('resolved', e => {
   const s = JSON.parse(e.data);
   upsertSignal(s);
+  settleCard(s);
   if (s.pnl > 0) {
     const tile = $('t-pnl').parentElement;
     tile.classList.remove('win-pulse'); void tile.offsetWidth;
@@ -315,7 +352,92 @@ es.addEventListener('signal', e => {
     document.body.classList.remove('panic-flash'); void document.body.offsetWidth;
     document.body.classList.add('panic-flash');
   }
+  spawnCard(s);
 });
+
+// ---- swipe cards: you vs the bot -------------------------------------------
+const picks = new Map();          // signalId -> 'fade' | 'ride'
+const duel = { you: 0, bot: 0 };
+const openCards = new Map();      // signalId -> card element
+
+function duelRender() { $('t-duel').innerHTML = `${duel.you} <small>–</small> ${duel.bot}`; }
+
+function spawnCard(s) {
+  const dirWord = s.direction === 1
+    ? `spiked <b>${s.pre.toFixed(2)} → ${s.det.toFixed(2)}</b>`
+    : `crashed <b>${s.pre.toFixed(2)} → ${s.det.toFixed(2)}</b>`;
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `
+    <div class="alert">🚨 PANIC DETECTED · ${s.panic}/100</div>
+    <h4>${s.meta?.label || s.fixtureId}</h4>
+    <div class="jump">Market just ${dirWord}</div>
+    <div class="take">The bot says the crowd overreacted and is fading it — call committed on-chain. Whose side are you on?</div>
+    <div class="panic-bar"><div class="panic-fill" style="width:${s.panic}%;background:${s.panic >= 70 ? 'var(--critical)' : 'var(--serious)'}"></div></div>
+    <div class="actions">
+      <button class="ride">🌊 Ride the wave</button>
+      <button class="fade">🎯 Fade with the bot</button>
+    </div>
+    <div class="hint">drag the card: ← ride · fade →</div>
+    <span class="stamp fade">FADED</span>
+    <span class="stamp ride">RIDING</span>`;
+  $('cards').appendChild(el);
+  openCards.set(s.id, el);
+
+  const choose = choice => {
+    if (!openCards.has(s.id)) return;
+    openCards.delete(s.id);
+    picks.set(s.id, choice);
+    el.querySelector(`.stamp.${choice}`).style.opacity = 1;
+    el.classList.add(choice === 'fade' ? 'gone-right' : 'gone-left');
+    setTimeout(() => el.remove(), 300);
+  };
+  el.querySelector('.ride').addEventListener('click', () => choose('ride'));
+  el.querySelector('.fade').addEventListener('click', () => choose('fade'));
+
+  // drag physics
+  let startX = null, dx = 0;
+  el.addEventListener('pointerdown', ev => {
+    if (ev.target.tagName === 'BUTTON') return;
+    startX = ev.clientX; el.classList.add('dragging'); el.setPointerCapture(ev.pointerId);
+  });
+  el.addEventListener('pointermove', ev => {
+    if (startX === null) return;
+    dx = ev.clientX - startX;
+    el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+    el.querySelector('.stamp.fade').style.opacity = Math.max(0, Math.min(1, dx / 90));
+    el.querySelector('.stamp.ride').style.opacity = Math.max(0, Math.min(1, -dx / 90));
+  });
+  const release = () => {
+    if (startX === null) return;
+    startX = null; el.classList.remove('dragging');
+    if (dx > 90) choose('fade');
+    else if (dx < -90) choose('ride');
+    else {
+      el.style.transform = '';
+      el.querySelectorAll('.stamp').forEach(x => x.style.opacity = 0);
+    }
+    dx = 0;
+  };
+  el.addEventListener('pointerup', release);
+  el.addEventListener('pointercancel', release);
+}
+
+function settleCard(s) {
+  // signal resolved: score the duel, dismiss an unswiped card
+  const open = openCards.get(s.id);
+  if (open) {
+    openCards.delete(s.id);
+    open.querySelector('.take').innerHTML = '⏱ Market moved before you picked. Too slow!';
+    open.classList.add('gone-left');
+    setTimeout(() => open.remove(), 300);
+  }
+  const botRight = s.pnl > 0;
+  if (botRight) duel.bot++;
+  const pick = picks.get(s.id);
+  if (pick && ((pick === 'fade' && botRight) || (pick === 'ride' && !botRight))) duel.you++;
+  duelRender();
+}
 
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {

@@ -2,9 +2,13 @@
 // overshoot engine, publishes every signal to Solana devnet, and serves the
 // dashboard over HTTP + SSE.
 //
-//   MODE=replay node server.js   (default; deterministic demo)
+//   MODE=replay node server.js   (default; real WC2022 matches, modeled prices)
 //   MODE=live   node server.js   (TxLINE SSE streams; needs npm run subscribe)
 //   MODE=record node server.js   (live + append ticks to data/recording.jsonl)
+//   MODE=follow FILE=x.jsonl     (generic adapter: tail ANY probability-market
+//                                 tick stream — crypto, elections, esports.
+//                                 One JSON object per line:
+//                                 {"fixtureId","outcome","price","ts","meta"})
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -19,7 +23,7 @@ import { Pundit } from './lib/pundit.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
 const PORT = Number(process.env.PORT || 4747);
-const SPEED = Number(process.env.SPEED || 40); // replay: match-seconds per second
+const SPEED = Number(process.env.SPEED || 25); // replay: match-seconds per second
 const PUBLISH = process.env.PUBLISH !== '0';   // PUBLISH=0 to disable on-chain writes
 
 const engine = new OvershootEngine();
@@ -99,6 +103,31 @@ async function startLive() {
   console.log('[fadecast] live mode: TxLINE SSE connected');
 }
 
+// Generic source: follow a JSONL file of ticks. Anything that can write a line
+// of JSON can feed the engine — the detector doesn't care what the market is.
+async function startFollow() {
+  const file = process.env.FILE || path.join(__dirname, 'data/feed.jsonl');
+  fs.appendFileSync(file, ''); // ensure it exists
+  let offset = fs.statSync(file).size;
+  console.log(`[fadecast] follow mode: tailing ${file}`);
+  setInterval(() => {
+    const size = fs.statSync(file).size;
+    if (size <= offset) return;
+    const buf = Buffer.alloc(size - offset);
+    const fd = fs.openSync(file, 'r');
+    fs.readSync(fd, buf, 0, buf.length, offset);
+    fs.closeSync(fd);
+    offset = size;
+    for (const line of buf.toString('utf8').split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const t = JSON.parse(line);
+        engine.addTick({ ...t, ts: t.ts ?? Date.now() / 1000 });
+      } catch (e) { console.warn('[follow] bad line skipped:', e.message); }
+    }
+  }, 500);
+}
+
 // ---- http -------------------------------------------------------------------
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
@@ -138,7 +167,9 @@ server.listen(PORT, async () => {
   console.log(`[fadecast] http://localhost:${PORT}  mode=${MODE} publish=${PUBLISH}`);
   console.log(`[fadecast] agent wallet: ${publisher.address}`);
   if (PUBLISH) await publisher.ensureFunds().then(b => console.log(`[fadecast] devnet balance: ${b / 1e9} SOL`));
-  (MODE === 'live' || MODE === 'record' ? startLive() : startReplay())
+  (MODE === 'live' || MODE === 'record' ? startLive()
+    : MODE === 'follow' ? startFollow()
+    : startReplay())
     .catch(e => {
       console.error('[fadecast] source failed:', e.message);
       if (MODE !== 'replay') { console.log('[fadecast] falling back to replay'); startReplay(); }
