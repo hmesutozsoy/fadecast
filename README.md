@@ -158,8 +158,9 @@ Fadeable** leaderboard ranks who on your timeline you should always bet
 against. Swipe cards quote the loudest take — *"@degenCarlos says Argentina is
 cooked. Fade him?"*
 
-Demo mode synthesizes a CT-style timeline from the real match events. Live
-mode ingests **real posts** — point a scout agent (or anything) at:
+The **"see real posts on 𝕏"** link opens the live X search for the current
+match. Demo mode synthesizes a CT-style timeline from the real match events.
+Live mode ingests **real posts** — point a scout agent (or anything) at:
 
 ```bash
 curl -X POST localhost:4747/api/takes -d '{
@@ -193,7 +194,8 @@ auditable track record.
 
 - **Replay is the onboarding.** Any historical match is one JSON entry in
   `data/matches.json`; the header picker replays it on demand
-  (`GET /api/replay?match=<id>&speed=N`). A library of history's great market
+  (`GET /api/replay?match=<id>&speed=N`, `/api/replay/stop` to pause). Upcoming
+  fixtures (`data/upcoming.json`) show what goes live next through TxLINE. A library of history's great market
   panics — every famous collapse becomes shareable, replayable content.
 - **The detector shards by series.** Each `(market, outcome)` series is
   independent state with bounded memory (ticks and signals are trimmed; the

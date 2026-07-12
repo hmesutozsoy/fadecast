@@ -1,0 +1,19 @@
+{
+  "note": "Upcoming FIFA World Cup 2026 fixtures — these go live through the TxLINE odds/scores streams (npm run live) once the API token is activated.",
+  "matches": [
+    {
+      "fixtureId": "wc2026-sf-fra-esp",
+      "home": "France",
+      "away": "Spain",
+      "stage": "Semifinal",
+      "kickoff": "2026-07-15"
+    },
+    {
+      "fixtureId": "wc2026-final",
+      "home": "TBD",
+      "away": "TBD",
+      "stage": "Final — MetLife Stadium",
+      "kickoff": "2026-07-19"
+    }
+  ]
+}

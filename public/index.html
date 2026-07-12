@@ -39,7 +39,18 @@
   select.chip, button.chip { font: inherit; font-size: 12px; appearance: none; -webkit-appearance: none; }
   select.chip { max-width: 210px; text-overflow: ellipsis; }
   button.chip:hover { border-color: var(--series); color: var(--series); }
-  .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+
+  .upcoming { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .upcoming:empty { display: none; }
+  .up {
+    display: flex; align-items: baseline; gap: 8px; font-size: 12.5px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 14px; color: var(--ink-2);
+  }
+  .up b { color: var(--ink); }
+  .up .when { color: var(--warning); font-variant-numeric: tabular-nums; }
+  .up .stage { color: var(--muted); font-size: 11px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
@@ -170,11 +181,15 @@
       <option value="all">▶ Replay: all matches</option>
     </select>
     <button id="go" class="chip" style="cursor:pointer">Start</button>
+    <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
-    <span class="chip" id="wallet" title="agent wallet (devnet)">wallet: —</span>
+    <button id="connect" class="chip" style="cursor:pointer" title="connect your Solana wallet (devnet)">👛 Connect wallet</button>
+    <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
   </div>
 </header>
 <p class="sub">TxLINE StablePrice odds → overshoot detection → fade signal committed to Solana devnet <em>before</em> resolution.</p>
+
+<div class="upcoming" id="upcoming"></div>
 
 <div class="tiles">
   <div class="tile"><div class="k">Signals fired</div><div class="v" id="t-signals">0</div></div>
@@ -190,7 +205,9 @@
 
 <div class="bottom">
   <section>
-    <h2>The Timeline 🗣 <span style="text-transform:none;letter-spacing:0">— takes from accounts you follow</span></h2>
+    <h2>The Timeline 🗣 <span style="text-transform:none;letter-spacing:0">— takes from accounts you follow</span>
+      <a id="xlink" href="https://x.com/search?q=World%20Cup&f=live" target="_blank"
+         style="float:right;font-size:11px;text-transform:none;letter-spacing:0">see real posts on 𝕏 ↗</a></h2>
     <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
     <h2 style="margin-top:16px">Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
     <div class="pundit-box" id="fadeboard" style="max-height:180px"><div class="empty">No receipts yet.</div></div>
@@ -324,12 +341,16 @@ let chainCount = 0;
 es.addEventListener('hello', e => {
   const d = JSON.parse(e.data);
   $('mode').innerHTML = `<span class="dot"></span>${d.mode} mode`;
-  $('wallet').textContent = `wallet: ${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`;
+  $('wallet').textContent = `agent: ${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`;
 });
 es.addEventListener('tick', e => {
   const t = JSON.parse(e.data);
   const m = matchCard(t.fixtureId, t.label || t.fixtureId);
-  if (t.label && m.label !== t.label) { m.label = t.label; m.el.querySelector('h3').textContent = t.label; }
+  if (t.label && m.label !== t.label) {
+    m.label = t.label;
+    m.el.querySelector('h3').textContent = t.label;
+    $('xlink').href = `https://x.com/search?q=${encodeURIComponent(t.label)}&f=live`;
+  }
   m.series.push([t.ts, t.price]);
   if (m.series.length > 400) m.series.shift();
   m.price.textContent = `P(home) ${t.price.toFixed(3)}`;
@@ -571,7 +592,7 @@ function settleCard(s) {
   duelRender();
 }
 
-// ---- replay picker ----
+// ---- replay picker / stop ----
 fetch('/api/matches').then(r => r.json()).then(list => {
   for (const m of list) {
     const o = document.createElement('option');
@@ -582,7 +603,46 @@ fetch('/api/matches').then(r => r.json()).then(list => {
 });
 $('go').addEventListener('click', async () => {
   await fetch(`/api/replay?match=${encodeURIComponent($('pick').value)}`);
-  location.reload();
+  location.replace(location.pathname + '?s=' + Date.now()); // hard reload (cache-bust)
+});
+$('stop').addEventListener('click', async () => {
+  await fetch('/api/replay/stop');
+});
+es.addEventListener('status', e => {
+  const d = JSON.parse(e.data);
+  $('mode').innerHTML = `<span class="dot" style="background:${/stopped|finished/.test(d.note) ? 'var(--warning)' : 'var(--good)'}"></span>${d.note || d.mode}`;
+});
+
+// ---- upcoming fixtures (live via TxLINE once activated) ----
+fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
+  const days = iso => Math.max(0, Math.ceil((new Date(iso + 'T12:00:00Z') - Date.now()) / 86400e3));
+  $('upcoming').innerHTML = (matches || []).map(m => `
+    <span class="up">🔜 <b>${m.home} vs ${m.away}</b>
+      <span class="when">${new Date(m.kickoff + 'T12:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · in ${days(m.kickoff)}d</span>
+      <span class="stage">${m.stage} · live via TxLINE</span></span>`).join('');
+});
+
+// ---- your wallet (Phantom, devnet) ----
+$('connect').addEventListener('click', async () => {
+  const btn = $('connect');
+  const provider = window.solana;
+  if (!provider || !provider.isPhantom) {
+    btn.textContent = '👛 Phantom not found — get it ↗';
+    window.open('https://phantom.app', '_blank');
+    return;
+  }
+  try {
+    const { publicKey } = await provider.connect();
+    const key = publicKey.toString();
+    btn.textContent = `👛 ${key.slice(0, 4)}…${key.slice(-4)} · …`;
+    const r = await fetch('https://api.devnet.solana.com', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [key] })
+    }).then(x => x.json());
+    btn.textContent = `👛 ${key.slice(0, 4)}…${key.slice(-4)} · ${((r.result?.value || 0) / 1e9).toFixed(2)} SOL (devnet)`;
+  } catch {
+    btn.textContent = '👛 Connect wallet';
+  }
 });
 
 // initial state (page reload mid-run)

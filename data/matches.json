@@ -58,19 +58,6 @@
         { "min": 73, "team": "home", "scorer": "Richarlison" }
       ],
       "result": "Brazil 2–0 Serbia"
-    },
-    {
-      "fixtureId": "wc2022-arg-fra",
-      "home": "Argentina",
-      "away": "France",
-      "p0": 0.45,
-      "goals": [
-        { "min": 23, "team": "home", "scorer": "Messi (pen)" },
-        { "min": 36, "team": "home", "scorer": "Di María" },
-        { "min": 80, "team": "away", "scorer": "Mbappé (pen)" },
-        { "min": 81, "team": "away", "scorer": "Mbappé" }
-      ],
-      "result": "Argentina 3–3 France (AET), Argentina won 4–2 on penalties"
     }
   ]
 }

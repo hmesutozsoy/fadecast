@@ -195,6 +195,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(listMatches()));
   }
+  if (url.pathname === '/api/upcoming') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(fs.readFileSync(path.join(__dirname, 'data/upcoming.json')));
+  }
+  if (url.pathname === '/api/replay/stop' && MODE === 'replay') {
+    if (currentSrc) currentSrc.stop();
+    broadcast('status', { mode: MODE, note: 'replay stopped' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, stopped: true }));
+  }
   if (url.pathname === '/api/replay' && MODE === 'replay') {
     const only = url.searchParams.get('match') || null;
     const speed = Number(url.searchParams.get('speed')) || SPEED;
