@@ -44,13 +44,13 @@
   .upcoming { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
   .upcoming:empty { display: none; }
   .up {
-    display: flex; align-items: baseline; gap: 8px; font-size: 12.5px;
+    display: flex; align-items: baseline; gap: 10px; font-size: 15px;
     background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-    padding: 5px 14px; color: var(--ink-2);
+    padding: 8px 18px; color: var(--ink-2);
   }
-  .up b { color: var(--ink); }
+  .up b { color: var(--ink); font-size: 16px; }
   .up .when { color: var(--warning); font-variant-numeric: tabular-nums; }
-  .up .stage { color: var(--muted); font-size: 11px; }
+  .up .stage { color: var(--muted); font-size: 13px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
@@ -92,18 +92,6 @@
   .pundit-box .txt { color: var(--ink-2); }
   .pundit-box .line.hot .txt { color: var(--ink); }
   @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-
-  .draft { padding: 10px 12px; border-bottom: 1px solid var(--grid); animation: slideIn .3s ease; }
-  .draft:last-child { border-bottom: none; }
-  .draft .dtext { font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
-  .draft .drow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .draft .dkind { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
-  .draft .dkind.receipt { color: var(--good); border-color: var(--good); }
-  .draft button {
-    margin-left: auto; font: inherit; font-size: 11px; padding: 2px 10px; cursor: pointer;
-    background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--ink-2);
-  }
-  .draft button:hover { border-color: var(--series); color: var(--series); }
 
   .tk { padding: 9px 12px; border-bottom: 1px solid var(--grid); font-size: 12.5px; line-height: 1.45; animation: slideIn .3s ease; }
   .tk:last-child { border-bottom: none; }
@@ -175,7 +163,6 @@
 <body>
 <header>
   <h1>FADE<b>CAST</b></h1>
-  <span class="tagline">the AI pundit that can’t lie about its record</span>
   <div class="chips">
     <select id="pick" class="chip" title="replay a real World Cup match">
       <option value="all">▶ Replay: all matches</option>
@@ -207,7 +194,7 @@
   <section>
     <h2>The Timeline 🗣 <span style="text-transform:none;letter-spacing:0">— takes from accounts you follow</span>
       <a id="xlink" href="https://x.com/search?q=World%20Cup&f=live" target="_blank"
-         style="float:right;font-size:11px;text-transform:none;letter-spacing:0">see real posts on 𝕏 ↗</a></h2>
+         style="float:right;font-size:11px;text-transform:none;letter-spacing:0">see the posts on 𝕏 ↗</a></h2>
     <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
     <h2 style="margin-top:16px">Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
     <div class="pundit-box" id="fadeboard" style="max-height:180px"><div class="empty">No receipts yet.</div></div>
@@ -222,8 +209,6 @@
   <section>
     <h2>The Pundit 🎙</h2>
     <div class="pundit-box" id="pundit"><div class="empty">Mic check… waiting for kickoff.</div></div>
-    <h2 style="margin-top:16px">Draft tweets 📝 <span style="text-transform:none;letter-spacing:0">— feeds the CT agent, nothing auto-posts</span></h2>
-    <div class="pundit-box" id="drafts"><div class="empty">Calls become tweets here.</div></div>
   </section>
 </div>
 
@@ -407,25 +392,7 @@ function punditLine(line) {
 }
 es.addEventListener('pundit', e => punditLine(JSON.parse(e.data)));
 
-let draftsEmpty = true;
-function draftLine(d) {
-  const box = $('drafts');
-  if (draftsEmpty) { box.innerHTML = ''; draftsEmpty = false; }
-  const el = document.createElement('div');
-  el.className = 'draft';
-  el.innerHTML = `
-    <div class="drow"><span class="dkind ${d.kind}">${d.kind}</span><button>copy</button></div>
-    <div class="dtext"></div>`;
-  el.querySelector('.dtext').textContent = d.text;
-  el.querySelector('button').addEventListener('click', ev => {
-    navigator.clipboard.writeText(d.text);
-    ev.target.textContent = 'copied ✓';
-    setTimeout(() => ev.target.textContent = 'copy', 1500);
-  });
-  box.prepend(el);
-  while (box.children.length > 12) box.lastChild.remove();
-}
-es.addEventListener('draft', e => draftLine(JSON.parse(e.data)));
+// drafts are API-only now: GET /api/drafts or tail data/outbox.jsonl
 
 // ---- the timeline: takes, verdicts, most-fadeable ----
 const takeEls = new Map();          // take id -> element
@@ -656,7 +623,6 @@ fetch('/api/state').then(r => r.json()).then(st => {
   (st.signals || []).forEach(upsertSignal);
   if (st.pnl) setPnl(st.pnl);
   (st.pundit || []).forEach(punditLine);
-  (st.drafts || []).forEach(draftLine);
   ((st.crowd || {}).takes || []).forEach(takeLine);
   fadeboard(((st.crowd || {}).leaderboard) || []);
   $('t-chain').textContent = st.published || 0;

@@ -32,7 +32,7 @@ FadeCast:
    marks its own P&L. Wins *and* losses are on-chain forever.
 
 The dashboard shows the live odds, panic meters, signal feed with
-`verify ↗` explorer links, the agent's cumulative record — and **The Pundit**,
+`verify ↗` explorer links, the agent's cumulative record — plus **The Pundit**,
 FadeCast's live commentary voice. It reacts to goals, narrates each fade with
 its reasoning, gloats on wins, and owns its losses (which are on-chain anyway,
 so it has no choice). Commentary is template-driven by default so the demo
@@ -180,9 +180,8 @@ Same scoring, same leaderboard — real handles, real receipts.
 Every call and every resolution is composed into a **ready-to-post tweet
 draft** in a fast, receipts-forward CT voice — the call *with its on-chain
 timestamp link*, then the win gloat or the owned loss. Nothing auto-posts, by
-design. Consume the drafts three ways:
+design. Consume the drafts two ways:
 
-- the **Draft tweets** panel on the dashboard (one-click copy),
 - `GET /api/drafts` (JSON array),
 - tail `data/outbox.jsonl` — one draft per line:
   `{id, kind: "call"|"receipt", text, signalId, label, explorer, ts}`.
