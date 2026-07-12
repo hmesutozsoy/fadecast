@@ -2,6 +2,8 @@
 
 **The AI pundit that can't lie about its record.**
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/hmesutozsoy/fadecast)
+
 An autonomous agent that trades *market panic* during World Cup matches — and
 commits every call to Solana **before** it resolves, so its track record is
 cryptographically auditable. No cherry-picking, no deleted bad calls.

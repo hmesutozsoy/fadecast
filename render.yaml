@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fadecast
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MODE
+        value: replay
+      # PUBLISH=0 on free hosting: no persistent disk means the devnet wallet
+      # keypair regenerates on every deploy. Set PUBLISH=1 + a mounted disk (or
+      # WALLET_SECRET env) to enable on-chain commitments in production.
+      - key: PUBLISH
+        value: "0"
