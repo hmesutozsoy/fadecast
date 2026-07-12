@@ -69,6 +69,33 @@
   a:hover { text-decoration: underline; }
   .empty { color: var(--muted); padding: 18px; text-align: center; }
   .pnl-pos { color: var(--good); } .pnl-neg { color: var(--critical); }
+
+  .bottom { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; align-items: start; }
+  .pundit-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; max-height: 420px; overflow-y: auto; }
+  .pundit-box .line { padding: 10px 12px; border-bottom: 1px solid var(--grid); font-size: 13px; line-height: 1.5; display: flex; gap: 8px; animation: slideIn .3s ease; }
+  .pundit-box .line:last-child { border-bottom: none; }
+  .pundit-box .mood { flex-shrink: 0; }
+  .pundit-box .txt { color: var(--ink-2); }
+  .pundit-box .line.hot .txt { color: var(--ink); }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .goal-badge {
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--page);
+    background: var(--warning); border-radius: 4px; padding: 2px 6px; margin-left: 8px;
+    animation: goalPop 4s ease forwards;
+  }
+  @keyframes goalPop { 0% { opacity: 0; transform: scale(.6); } 8% { opacity: 1; transform: scale(1.15); } 14% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+  body.panic-flash::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9;
+    box-shadow: inset 0 0 120px rgba(208,59,59,0.55);
+    animation: vignette 1.6s ease forwards;
+  }
+  @keyframes vignette { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+  .tile.win-pulse { animation: winPulse 1.4s ease; }
+  @keyframes winPulse { 0% { box-shadow: none; } 25% { box-shadow: 0 0 0 2px var(--good), 0 0 26px rgba(12,163,12,.5); } 100% { box-shadow: none; } }
+
+  @media (max-width: 900px) { .bottom { grid-template-columns: 1fr; } }
   @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
@@ -92,15 +119,21 @@
 
 <div class="matches" id="matches"></div>
 
-<section>
-  <h2>Signal feed</h2>
-  <table>
-    <thead><tr>
-      <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
-    </tr></thead>
-    <tbody id="feed"><tr><td colspan="8" class="empty">Waiting for market panic…</td></tr></tbody>
-  </table>
-</section>
+<div class="bottom">
+  <section>
+    <h2>Signal feed</h2>
+    <table>
+      <thead><tr>
+        <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
+      </tr></thead>
+      <tbody id="feed"><tr><td colspan="8" class="empty">Waiting for market panic…</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>The Pundit 🎙</h2>
+    <div class="pundit-box" id="pundit"><div class="empty">Mic check… waiting for kickoff.</div></div>
+  </section>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -241,8 +274,48 @@ es.addEventListener('published', e => {
   if (d.chain?.sig) $('t-chain').textContent = ++chainCount;
 });
 es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
-es.addEventListener('resolved', e => upsertSignal(JSON.parse(e.data)));
+es.addEventListener('resolved', e => {
+  const s = JSON.parse(e.data);
+  upsertSignal(s);
+  if (s.pnl > 0) {
+    const tile = $('t-pnl').parentElement;
+    tile.classList.remove('win-pulse'); void tile.offsetWidth;
+    tile.classList.add('win-pulse');
+  }
+});
 es.addEventListener('pnl', e => setPnl(JSON.parse(e.data)));
+
+// ---- pundit & drama ----
+let punditEmpty = true;
+function punditLine(line) {
+  const box = $('pundit');
+  if (punditEmpty) { box.innerHTML = ''; punditEmpty = false; }
+  const el = document.createElement('div');
+  el.className = 'line' + (line.kind === 'signal_high' || line.kind === 'win' ? ' hot' : '');
+  el.innerHTML = `<span class="mood">${line.mood}</span><span class="txt">${line.text}</span>`;
+  box.prepend(el);
+  while (box.children.length > 30) box.lastChild.remove();
+}
+es.addEventListener('pundit', e => punditLine(JSON.parse(e.data)));
+es.addEventListener('score', e => {
+  const g = JSON.parse(e.data);
+  const m = matches.get(g.fixtureId);
+  if (m) {
+    const h3 = m.el.querySelector('h3');
+    const badge = document.createElement('span');
+    badge.className = 'goal-badge';
+    badge.textContent = `⚽ ${g.team} ${g.minute}'`;
+    h3.appendChild(badge);
+    setTimeout(() => badge.remove(), 4200);
+  }
+});
+es.addEventListener('signal', e => {
+  const s = JSON.parse(e.data);
+  if (s.panic >= 70) {
+    document.body.classList.remove('panic-flash'); void document.body.offsetWidth;
+    document.body.classList.add('panic-flash');
+  }
+});
 
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {
@@ -254,6 +327,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   }
   (st.signals || []).forEach(upsertSignal);
   if (st.pnl) setPnl(st.pnl);
+  (st.pundit || []).forEach(punditLine);
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
 });

@@ -30,7 +30,13 @@ FadeCast:
    marks its own P&L. Wins *and* losses are on-chain forever.
 
 The dashboard shows the live odds, panic meters, signal feed with
-`verify ↗` explorer links, and the agent's cumulative record.
+`verify ↗` explorer links, the agent's cumulative record — and **The Pundit**,
+FadeCast's live commentary voice. It reacts to goals, narrates each fade with
+its reasoning, gloats on wins, and owns its losses (which are on-chain anyway,
+so it has no choice). Commentary is template-driven by default so the demo
+never depends on a network call; set `ANTHROPIC_API_KEY` and every line is
+generated live by Claude (`PUNDIT_MODEL` to override, defaults to
+`claude-opus-4-8`), falling back to templates on any error.
 
 ## Why on-chain commitment matters
 
@@ -101,6 +107,8 @@ Replay src ──┘        │                            │
   simulator, or recorded-tick playback. Same event shape as live.
 - `lib/solana.js` — Memo-program commitments with graceful faucet-failure
   queueing and periodic flush.
+- `lib/pundit.js` — commentary engine: deterministic templates, optionally
+  upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
 ## Honest limitations

@@ -14,6 +14,7 @@ import { OvershootEngine } from './lib/overshoot.js';
 import { ReplaySource } from './lib/replay.js';
 import { TxLineClient } from './lib/txline.js';
 import { SignalPublisher } from './lib/solana.js';
+import { Pundit } from './lib/pundit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -26,22 +27,36 @@ const publisher = new SignalPublisher({
   walletPath: path.join(__dirname, 'data/wallet.json'),
   enabled: PUBLISH
 });
+const pundit = new Pundit();
 const sseClients = new Set();
+const punditLog = [];
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const res of sseClients) res.write(frame);
 }
 
+async function commentate(promise) {
+  const line = await promise;
+  punditLog.push(line);
+  if (punditLog.length > 60) punditLog.shift();
+  broadcast('pundit', line);
+}
+
 engine.on('tick', t => broadcast('tick', t));
 engine.on('signal', async signal => {
   broadcast('signal', signal);
+  commentate(pundit.signal(signal));
   const rec = await publisher.publish(signal);
   signal.chain = { sig: rec.sig, explorer: rec.explorer, hash: publisher.hash(signal) };
   broadcast('published', { id: signal.id, chain: signal.chain });
 });
-engine.on('entered', s => broadcast('entered', s));
-engine.on('resolved', s => { broadcast('resolved', s); broadcast('pnl', engine.state().pnl); });
+engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
+engine.on('resolved', s => {
+  broadcast('resolved', s);
+  broadcast('pnl', engine.state().pnl);
+  commentate(pundit.resolved(s));
+});
 
 // devnet faucet rate-limits: retry funding + flush queued commitments
 setInterval(async () => {
@@ -60,6 +75,7 @@ async function startReplay() {
     ? path.join(__dirname, 'data/recording.jsonl') : null;
   const src = new ReplaySource({ speed: SPEED, recording });
   src.on('tick', t => engine.addTick(t));
+  src.on('score', g => { broadcast('score', g); commentate(pundit.goal(g)); });
   src.on('end', () => broadcast('status', { mode: MODE, note: 'replay finished' }));
   src.start();
   console.log(`[fadecast] replay mode (${recording ? 'recorded ticks' : 'synthetic matches'}, ${SPEED}x)`);
@@ -95,6 +111,7 @@ const server = http.createServer(async (req, res) => {
       mode: MODE,
       wallet: publisher.address,
       published: publisher.published.length,
+      pundit: punditLog.slice(-20),
       ...engine.state()
     }));
   }
