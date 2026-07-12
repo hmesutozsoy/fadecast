@@ -20,6 +20,7 @@ import { TxLineClient } from './lib/txline.js';
 import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
+import { Crowd } from './lib/crowd.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -33,6 +34,9 @@ const publisher = new SignalPublisher({
 });
 const pundit = new Pundit();
 const outbox = new SocialOutbox({ file: path.join(__dirname, 'data/outbox.jsonl') });
+const crowd = new Crowd();
+crowd.on('take', t => broadcast('take', t));
+crowd.on('scored', scored => broadcast('crowd', { scored, leaderboard: crowd.leaderboard() }));
 const sseClients = new Set();
 const punditLog = [];
 let engine;          // recreated on every replay session
@@ -68,6 +72,7 @@ function wireEngine() {
     broadcast('pnl', engine.state().pnl);
     commentate(pundit.resolved(s));
     broadcast('draft', outbox.receipt(s));
+    crowd.scoreResolved(s);
   });
 }
 wireEngine();
@@ -93,7 +98,11 @@ async function startReplay({ only = null, speed = SPEED } = {}) {
   const src = new ReplaySource({ speed, recording, only });
   currentSrc = src;
   src.on('tick', t => engine.addTick(t));
-  src.on('score', g => { broadcast('score', g); commentate(pundit.goal(g)); });
+  src.on('score', g => {
+    broadcast('score', g);
+    commentate(pundit.goal(g));
+    setTimeout(() => crowd.reactToGoal(g), 400); // the timeline piles in right after
+  });
   src.on('end', () => broadcast('status', { mode: MODE, note: 'replay finished' }));
   src.start();
   console.log(`[fadecast] replay (${recording ? 'recorded ticks' : only || 'all matches'}, ${speed}x)`);
@@ -156,8 +165,27 @@ const server = http.createServer(async (req, res) => {
       published: publisher.published.length,
       pundit: punditLog.slice(-20),
       drafts: outbox.drafts.slice(-12),
+      crowd: crowd.state(),
       ...engine.state()
     }));
+  }
+  // live intake: a scout agent (or curl) posts real takes from accounts you follow
+  if (url.pathname === '/api/takes' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const t = JSON.parse(body);
+        if (!t.handle || !t.text || !t.fixtureId) throw new Error('need handle, text, fixtureId');
+        const take = crowd.add({ ...t, ts: t.ts ?? null });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, id: take.id }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    });
+    return;
   }
   if (url.pathname === '/api/drafts') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

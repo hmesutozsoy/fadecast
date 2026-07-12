@@ -94,6 +94,20 @@
   }
   .draft button:hover { border-color: var(--series); color: var(--series); }
 
+  .tk { padding: 9px 12px; border-bottom: 1px solid var(--grid); font-size: 12.5px; line-height: 1.45; animation: slideIn .3s ease; }
+  .tk:last-child { border-bottom: none; }
+  .tk .h { color: var(--series); font-weight: 600; margin-right: 6px; }
+  .tk .t { color: var(--ink-2); }
+  .tk .v { float: right; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .tk .v.wrong { color: var(--good); border-color: var(--good); }   /* wrong take = we won */
+  .tk .v.right { color: var(--critical); border-color: var(--critical); }
+  .fb { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--grid); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .fb:last-child { border-bottom: none; }
+  .fb .h { color: var(--ink); font-weight: 600; }
+  .fb .bar { flex: 1; height: 5px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+  .fb .fill { height: 100%; background: var(--critical); border-radius: 3px; }
+  .fb .pct { color: var(--ink-2); min-width: 88px; text-align: right; font-size: 12px; }
+
   .goal-badge {
     font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--page);
     background: var(--warning); border-radius: 4px; padding: 2px 6px; margin-left: 8px;
@@ -176,7 +190,11 @@
 
 <div class="bottom">
   <section>
-    <h2>Signal feed</h2>
+    <h2>The Timeline 🗣 <span style="text-transform:none;letter-spacing:0">— takes from accounts you follow</span></h2>
+    <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
+    <h2 style="margin-top:16px">Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
+    <div class="pundit-box" id="fadeboard" style="max-height:180px"><div class="empty">No receipts yet.</div></div>
+    <h2 style="margin-top:16px">Signal feed</h2>
     <table>
       <thead><tr>
         <th>t</th><th>Match</th><th>Side</th><th>Pre → Det</th><th>Panic</th><th>Status</th><th>P&amp;L</th><th>On-chain</th>
@@ -387,6 +405,61 @@ function draftLine(d) {
   while (box.children.length > 12) box.lastChild.remove();
 }
 es.addEventListener('draft', e => draftLine(JSON.parse(e.data)));
+
+// ---- the timeline: takes, verdicts, most-fadeable ----
+const takeEls = new Map();          // take id -> element
+const latestTake = new Map();       // fixtureId -> take (unscored panic takes)
+let tlEmpty = true;
+function takeLine(t) {
+  const box = $('timeline');
+  if (tlEmpty) { box.innerHTML = ''; tlEmpty = false; }
+  const el = document.createElement('div');
+  el.className = 'tk';
+  el.innerHTML = `<span class="v"></span><span class="h">${t.handle}</span><span class="t"></span>`;
+  el.querySelector('.t').textContent = t.text;
+  const v = el.querySelector('.v');
+  if (t.verdict) { v.textContent = t.verdict === 'wrong' ? '💀 was wrong' : '😤 was right'; v.className = `v ${t.verdict}`; }
+  else v.remove();
+  box.prepend(el);
+  takeEls.set(t.id, el);
+  if (t.stance === 'panic' && !t.verdict) latestTake.set(t.fixtureId, t);
+  while (box.children.length > 25) box.lastChild.remove();
+}
+function fadeboard(rows) {
+  const box = $('fadeboard');
+  if (!rows.length) return;
+  box.innerHTML = rows.map(r => `
+    <div class="fb"><span class="h">${r.handle}</span>
+      <span class="bar"><span class="fill" style="width:${r.fadeRate}%"></span></span>
+      <span class="pct">${r.fadeRate}% fadeable <small>(${r.wrong}/${r.takes})</small></span></div>`).join('');
+}
+es.addEventListener('take', e => {
+  const t = JSON.parse(e.data);
+  takeLine(t);
+  // a card may have spawned before the timeline caught up — quote it now
+  if (t.stance === 'panic') {
+    for (const el of openCards.values()) {
+      if (el.dataset.fixture === t.fixtureId) {
+        el.querySelector('.take').innerHTML =
+          `🗣 <b>${t.handle}</b>: “${t.text.length > 80 ? t.text.slice(0, 80) + '…' : t.text}”<br>The bot disagrees — call's on-chain. Fade him?`;
+      }
+    }
+  }
+});
+es.addEventListener('crowd', e => {
+  const d = JSON.parse(e.data);
+  for (const t of d.scored) {
+    latestTake.delete(t.fixtureId);
+    const el = takeEls.get(t.id);
+    if (el && !el.querySelector('.v')) {
+      const v = document.createElement('span');
+      v.className = `v ${t.verdict}`;
+      v.textContent = t.verdict === 'wrong' ? '💀 was wrong' : '😤 was right';
+      el.prepend(v);
+    }
+  }
+  fadeboard(d.leaderboard);
+});
 es.addEventListener('score', e => {
   const g = JSON.parse(e.data);
   const m = matches.get(g.fixtureId);
@@ -421,11 +494,17 @@ function spawnCard(s) {
     : `crashed <b>${s.pre.toFixed(2)} → ${s.det.toFixed(2)}</b>`;
   const el = document.createElement('div');
   el.className = 'card';
+  el.dataset.fixture = s.fixtureId;
   el.innerHTML = `
     <div class="alert">🚨 PANIC DETECTED · ${s.panic}/100</div>
     <h4>${s.meta?.label || s.fixtureId}</h4>
     <div class="jump">Market just ${dirWord}</div>
-    <div class="take">The bot says the crowd overreacted and is fading it — call committed on-chain. Whose side are you on?</div>
+    <div class="take">${(() => {
+      const t = latestTake.get(s.fixtureId);
+      return t
+        ? `🗣 <b>${t.handle}</b>: “${t.text.length > 80 ? t.text.slice(0, 80) + '…' : t.text}”<br>The bot disagrees — call's on-chain. Fade him?`
+        : 'The bot says the crowd overreacted and is fading it — call committed on-chain. Whose side are you on?';
+    })()}</div>
     <div class="panic-bar"><div class="panic-fill" style="width:${s.panic}%;background:${s.panic >= 70 ? 'var(--critical)' : 'var(--serious)'}"></div></div>
     <div class="actions">
       <button class="ride">🌊 Ride the wave</button>
@@ -518,6 +597,8 @@ fetch('/api/state').then(r => r.json()).then(st => {
   if (st.pnl) setPnl(st.pnl);
   (st.pundit || []).forEach(punditLine);
   (st.drafts || []).forEach(draftLine);
+  ((st.crowd || {}).takes || []).forEach(takeLine);
+  fadeboard(((st.crowd || {}).leaderboard) || []);
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
 });

@@ -149,6 +149,29 @@ Replay src ──┘        │                            │
   upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
+## Fade your timeline
+
+The most relatable market on earth is the people you follow. **The Timeline**
+panel shows takes about the match as they land; when the bot's fade resolves,
+every take gets a verdict (💀 was wrong / 😤 was right), and the **Most
+Fadeable** leaderboard ranks who on your timeline you should always bet
+against. Swipe cards quote the loudest take — *"@degenCarlos says Argentina is
+cooked. Fade him?"*
+
+Demo mode synthesizes a CT-style timeline from the real match events. Live
+mode ingests **real posts** — point a scout agent (or anything) at:
+
+```bash
+curl -X POST localhost:4747/api/takes -d '{
+  "handle": "@degenCarlos",
+  "text": "Argentina is COOKED, max size on Saudi",
+  "fixtureId": "wc2022-arg-ksa",
+  "stance": "panic"
+}'
+```
+
+Same scoring, same leaderboard — real handles, real receipts.
+
 ## Social outbox — the agent feeds your feed
 
 Every call and every resolution is composed into a **ready-to-post tweet
