@@ -96,6 +96,13 @@ Dashboard: http://localhost:4747
 Env knobs: `PORT`, `SPEED` (replay acceleration), `PUBLISH=0` (skip on-chain
 writes), `TXLINE_NETWORK=mainnet|devnet`, `ANTHROPIC_API_KEY` (live Pundit).
 
+### Deploying with on-chain commits
+
+The agent wallet lives at `data/wallet.json` locally. On ephemeral-disk hosts
+(Render free tier), set `WALLET_SECRET` to the JSON array from that file and
+`PUBLISH=1` — one persistent identity across deploys, and the queued-commit
+retry loop does the rest once the wallet holds devnet SOL.
+
 ### Live mode: TxLINE free-tier activation
 
 TxLINE's World Cup free tier is subscribed **on-chain** (no TxL payment; SOL
@@ -151,6 +158,24 @@ Replay src ──┘        │                            │
   upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
+## Your rules, the bot's hands
+
+The **⚙ Fade rules** panel exposes the strategy's five knobs — panic
+threshold, confirmation wait, hold, stop-loss, and the tradeable band — apply
+them and the replay reruns with *your* rules
+(`GET /api/replay?match=<id>&threshold=4&confirm=30&hold=120&stop=5&bandLo=8&bandHi=92`,
+probability points on the wire). Every custom-strategy call still goes
+on-chain: you can tune *when* to fade, but you can't untell the chain what you
+did.
+
+## Sign in with your wallet
+
+**Connect wallet** (Phantom, devnet) is a login: your duel record and virtual
+bankroll follow your address. And when you swipe *Fade with the bot* while
+connected, **your call is signed by your own wallet and committed to devnet**
+— the audience gets the same proof-of-call treatment as the agent. No wallet?
+Everything still works; picks just stay local.
+
 ## Fade your timeline
 
 The most relatable market on earth is the people you follow. **The Timeline**
@@ -173,7 +198,9 @@ curl -X POST localhost:4747/api/takes -d '{
 }'
 ```
 
-Same scoring, same leaderboard — real handles, real receipts.
+Same scoring, same leaderboard — real handles, real receipts. And when a take
+is scored, its **hash + verdict is committed on-chain** alongside the bot's
+calls: the Most Fadeable leaderboard is provable, not just displayed.
 
 ## Social outbox — the agent feeds your feed
 

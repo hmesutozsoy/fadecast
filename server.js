@@ -36,11 +36,17 @@ const pundit = new Pundit();
 const outbox = new SocialOutbox({ file: path.join(__dirname, 'data/outbox.jsonl') });
 const crowd = new Crowd();
 crowd.on('take', t => broadcast('take', t));
-crowd.on('scored', scored => broadcast('crowd', { scored, leaderboard: crowd.leaderboard() }));
+crowd.on('scored', scored => {
+  broadcast('crowd', { scored, leaderboard: crowd.leaderboard() });
+  // the tweets go on-chain too: hash + verdict per scored take, so the
+  // "Most Fadeable" leaderboard is provable, not just the bot's record
+  for (const t of scored) publisher.publishTake(t);
+});
 const sseClients = new Set();
 const punditLog = [];
 let engine;          // recreated on every replay session
 let currentSrc = null;
+let strategy = {};   // user overrides of the engine's fade rules
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -55,7 +61,7 @@ async function commentate(promise) {
 }
 
 function wireEngine() {
-  engine = new OvershootEngine();
+  engine = new OvershootEngine(strategy);
   engine.on('tick', t => broadcast('tick', t));
   engine.on('signal', async signal => {
     broadcast('signal', signal);
@@ -95,7 +101,9 @@ setInterval(async () => {
   await publisher.ensureFunds();
   const recs = await publisher.flushQueue();
   for (const rec of recs) {
-    broadcast('published', { id: rec.id, chain: { sig: rec.sig, explorer: rec.explorer } });
+    if (rec.kind === 'signal') {
+      broadcast('published', { id: rec.id, chain: { sig: rec.sig, explorer: rec.explorer } });
+    }
   }
 }, 45_000);
 
@@ -175,6 +183,7 @@ const server = http.createServer(async (req, res) => {
       mode: MODE,
       wallet: publisher.address,
       published: publisher.published.length,
+      strategy: engine.p,
       pundit: punditLog.slice(-20),
       drafts: outbox.drafts.slice(-12),
       crowd: crowd.state(),
@@ -220,9 +229,21 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/replay' && MODE === 'replay') {
     const only = url.searchParams.get('match') || null;
     const speed = Number(url.searchParams.get('speed')) || SPEED;
+    // custom fade rules: probability points on the wire, decimals in the engine
+    const q = k => url.searchParams.get(k);
+    const num = (k, div = 1) => (q(k) !== null && q(k) !== '' && isFinite(Number(q(k)))) ? Number(q(k)) / div : undefined;
+    const next = {
+      threshold: num('threshold', 100),   // pts -> prob
+      confirm: num('confirm'),            // seconds
+      hold: num('hold'),                  // seconds
+      stopLoss: num('stop', 100),         // pts -> prob
+      band: (num('bandLo', 100) !== undefined && num('bandHi', 100) !== undefined)
+        ? [num('bandLo', 100), num('bandHi', 100)] : undefined
+    };
+    strategy = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
     startReplay({ only: only === 'all' ? null : only, speed });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, only, speed }));
+    return res.end(JSON.stringify({ ok: true, only, speed, strategy }));
   }
   if (url.pathname === '/api/events') {
     res.writeHead(200, {

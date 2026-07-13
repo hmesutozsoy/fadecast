@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FadeCast — provable panic trading</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+<script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <style>
   :root {
     --page: #0d0d0d;
@@ -134,6 +135,30 @@
   .tile.win-pulse { animation: winPulse 1.4s ease; }
   @keyframes winPulse { 0% { box-shadow: none; } 25% { box-shadow: 0 0 0 2px var(--good), 0 0 26px rgba(12,163,12,.5); } 100% { box-shadow: none; } }
 
+  /* ---- fade rules panel ---- */
+  #rules {
+    position: fixed; top: 70px; right: 24px; width: 380px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; box-shadow: 0 14px 44px rgba(0,0,0,.6);
+  }
+  #rules .rhead { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  #rules .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  #rules label { font-size: 12.5px; color: var(--ink); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+  #rules label span { font-weight: 400; font-size: 10.5px; color: var(--muted); min-height: 26px; }
+  #rules input {
+    background: var(--page); border: 1px solid var(--border); border-radius: 7px;
+    color: var(--ink); font: inherit; font-size: 14px; padding: 6px 9px; width: 100%;
+  }
+  #rules input:focus { outline: none; border-color: var(--series); }
+  #rules .rbtns { display: flex; gap: 8px; margin-top: 14px; }
+  #rules .rbtns button {
+    flex: 1; padding: 8px 0; border-radius: 8px; font: inherit; font-size: 12.5px; cursor: pointer;
+    background: none; border: 1px solid var(--border); color: var(--ink);
+  }
+  #rules .rbtns #r-apply { border-color: var(--series); color: var(--series); font-weight: 700; }
+  #rules .rbtns button:hover { background: rgba(255,255,255,0.04); }
+  #rules .rnote { margin-top: 10px; font-size: 11px; color: var(--muted); font-style: italic; }
+
   /* ---- quick bet ---- */
   #betcard {
     position: fixed; right: 24px; bottom: 24px; width: 260px; z-index: 19;
@@ -204,6 +229,7 @@
     </select>
     <button id="go" class="chip" style="cursor:pointer">Start</button>
     <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
+    <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
     <button id="connect" class="chip" style="cursor:pointer" title="connect your Solana wallet (devnet)">👛 Connect wallet</button>
     <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
@@ -248,6 +274,23 @@
   </table>
 </section>
 
+<div id="rules" hidden>
+  <div class="rhead">⚙ When should the bot fade?</div>
+  <div class="rgrid">
+    <label>Panic threshold <span>jump size that triggers a signal (pts)</span><input id="r-threshold" type="number" step="1" min="2" max="30"></label>
+    <label>Confirmation <span>seconds of calm before entering</span><input id="r-confirm" type="number" step="5" min="0" max="300"></label>
+    <label>Hold <span>seconds until the fade exits</span><input id="r-hold" type="number" step="10" min="30" max="900"></label>
+    <label>Stop-loss <span>cut the fade if it runs against you (pts)</span><input id="r-stop" type="number" step="1" min="2" max="30"></label>
+    <label>Band low <span>never fade below this price (pts)</span><input id="r-bandLo" type="number" step="1" min="0" max="49"></label>
+    <label>Band high <span>never fade above this price (pts)</span><input id="r-bandHi" type="number" step="1" min="51" max="100"></label>
+  </div>
+  <div class="rbtns">
+    <button id="r-apply">Apply & replay</button>
+    <button id="r-reset">Reset to bot defaults</button>
+  </div>
+  <div class="rnote">Your rules, the bot's hands — every custom-strategy call still goes on-chain.</div>
+</div>
+
 <div id="betcard">
   <div class="bhead">🎟 Quick bet <span id="bank">100 pts</span></div>
   <div class="bmatch" id="bet-label">waiting for a market…</div>
@@ -260,6 +303,11 @@
 
 <script>
 const $ = id => document.getElementById(id);
+
+// ---- identity: connect a wallet and your record follows it ----
+let userWallet = null, userProvider = null;
+const k = base => userWallet ? `${base}_${userWallet}` : base;
+
 const matches = new Map();   // fixtureId -> {el, canvas, series: [[t,p]...], label, panic, panicT}
 const signals = new Map();   // id -> {row, sig}
 
@@ -517,7 +565,14 @@ const picks = new Map();          // signalId -> 'fade' | 'ride'
 const duel = { you: 0, bot: 0 };
 const openCards = new Map();      // signalId -> card element
 
-function duelRender() { $('t-duel').innerHTML = `${duel.you} <small>–</small> ${duel.bot}`; }
+function duelRender() {
+  $('t-duel').innerHTML = `${duel.you} <small>–</small> ${duel.bot}`;
+  localStorage.setItem(k('fc_duel'), JSON.stringify(duel));
+}
+{ // restore the (anonymous) duel record on load; wallet connect swaps it
+  const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
+  if (d) { duel.you = d.you || 0; duel.bot = d.bot || 0; duelRender(); }
+}
 
 function spawnCard(s) {
   const dirWord = s.direction === 1
@@ -554,6 +609,7 @@ function spawnCard(s) {
     el.querySelector(`.stamp.${choice}`).style.opacity = 1;
     el.classList.add(choice === 'fade' ? 'gone-right' : 'gone-left');
     setTimeout(() => el.remove(), 300);
+    commitUserCall(s, choice); // wallet connected? your call goes on-chain too
   };
   el.querySelector('.ride').addEventListener('click', () => choose('ride'));
   el.querySelector('.fade').addEventListener('click', () => choose('fade'));
@@ -584,6 +640,39 @@ function spawnCard(s) {
   };
   el.addEventListener('pointerup', release);
   el.addEventListener('pointercancel', release);
+}
+
+// your swipe, committed to devnet through your own wallet — the audience's
+// calls get the same proof-of-call treatment as the bot's
+function youLine(html) {
+  const box = $('timeline');
+  if (tlEmpty) { box.innerHTML = ''; tlEmpty = false; }
+  const el = document.createElement('div');
+  el.className = 'tk';
+  el.innerHTML = `<span class="h">@you</span><span class="t">${html}</span>`;
+  box.prepend(el);
+}
+async function commitUserCall(s, choice) {
+  const verb = choice === 'fade' ? 'FADED with the bot' : 'rode the wave';
+  const label = s.meta?.label || s.fixtureId;
+  if (!userProvider || !window.solanaWeb3) return; // not signed in: local pick only
+  try {
+    const W = window.solanaWeb3;
+    const conn = new W.Connection('https://api.devnet.solana.com', 'confirmed');
+    const memo = JSON.stringify({ v: 1, app: 'fadecast', kind: 'user_call', signal: s.id, choice, ts: Date.now() });
+    const data = (W.Buffer ? W.Buffer.from(memo, 'utf8') : new TextEncoder().encode(memo));
+    const tx = new W.Transaction().add(new W.TransactionInstruction({
+      keys: [{ pubkey: userProvider.publicKey, isSigner: true, isWritable: false }],
+      programId: new W.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+      data
+    }));
+    tx.feePayer = userProvider.publicKey;
+    tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+    const { signature } = await userProvider.signAndSendTransaction(tx);
+    youLine(`${verb} on ${label} ⛓ <a href="https://explorer.solana.com/tx/${signature}?cluster=devnet" target="_blank">verify ↗</a>`);
+  } catch {
+    youLine(`${verb} on ${label} <span style="color:var(--muted)">(recorded locally — needs devnet SOL to commit)</span>`);
+  }
 }
 
 function settleCard(s) {
@@ -644,6 +733,8 @@ $('connect').addEventListener('click', async () => {
   try {
     const { publicKey } = await provider.connect();
     const key = publicKey.toString();
+    userWallet = key; userProvider = provider;   // signed in: your record follows this address
+    loadWalletState();
     btn.textContent = `👛 ${key.slice(0, 4)}…${key.slice(-4)} · …`;
     const r = await fetch('https://api.devnet.solana.com', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -655,6 +746,32 @@ $('connect').addEventListener('click', async () => {
   }
 });
 
+// ---- fade rules: customize when the bot fades ----
+$('gear').addEventListener('click', () => { $('rules').hidden = !$('rules').hidden; });
+function fillRules(p) {
+  if (!p) return;
+  $('r-threshold').value = Math.round(p.threshold * 100);
+  $('r-confirm').value = p.confirm;
+  $('r-hold').value = p.hold;
+  $('r-stop').value = Math.round(p.stopLoss * 100);
+  $('r-bandLo').value = Math.round(p.band[0] * 100);
+  $('r-bandHi').value = Math.round(p.band[1] * 100);
+}
+$('r-apply').addEventListener('click', async () => {
+  const q = new URLSearchParams({ match: $('pick').value });
+  for (const [param, id] of Object.entries(
+    { threshold: 'r-threshold', confirm: 'r-confirm', hold: 'r-hold', stop: 'r-stop', bandLo: 'r-bandLo', bandHi: 'r-bandHi' })) {
+    const v = $(id).value;
+    if (v !== '') q.set(param, v);
+  }
+  await fetch('/api/replay?' + q.toString());
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+$('r-reset').addEventListener('click', async () => {
+  await fetch('/api/replay?match=' + encodeURIComponent($('pick').value));
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+
 // ---- quick bet: virtual bankroll, client-side, zero wallet friction ----
 let bank = Number(localStorage.getItem('fc_bank') || 100);
 let pos = JSON.parse(localStorage.getItem('fc_pos') || 'null');
@@ -663,9 +780,16 @@ const curPrice = new Map();
 const STAKE = 10;
 
 function bankSave() {
-  localStorage.setItem('fc_bank', bank);
-  localStorage.setItem('fc_pos', JSON.stringify(pos));
+  localStorage.setItem(k('fc_bank'), bank);
+  localStorage.setItem(k('fc_pos'), JSON.stringify(pos));
   $('bank').textContent = `${bank.toFixed(1)} pts`;
+}
+function loadWalletState() {
+  bank = Number(localStorage.getItem(k('fc_bank')) ?? 100);
+  pos = JSON.parse(localStorage.getItem(k('fc_pos')) || 'null');
+  const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
+  duel.you = d?.you || 0; duel.bot = d?.bot || 0;
+  bankSave(); betRender(); duelRender();
 }
 function posValue() {
   const p = curPrice.get(pos.fixtureId);
@@ -732,6 +856,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   if (st.pnl) setPnl(st.pnl);
   ((st.crowd || {}).takes || []).forEach(takeLine);
   fadeboard(((st.crowd || {}).leaderboard) || []);
+  fillRules(st.strategy);
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
 });
