@@ -260,7 +260,9 @@
   </section>
   <section>
     <h2>Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
-    <div class="pundit-box" id="fadeboard" style="max-height:420px"><div class="empty">No receipts yet.</div></div>
+    <div class="pundit-box" id="fadeboard" style="max-height:230px"><div class="empty">No receipts yet.</div></div>
+    <h2 style="margin-top:16px">Proof ⛓ <span style="text-transform:none;letter-spacing:0">— read live from Solana, not from our server</span></h2>
+    <div class="pundit-box" id="proof" style="max-height:230px"><div class="empty">Nothing on-chain yet.</div></div>
   </section>
 </div>
 
@@ -422,10 +424,52 @@ function setPnl(p) {
 // ---- live wiring ----
 const es = new EventSource('/api/events');
 let chainCount = 0;
+let agentWallet = null;
+
+// the proof panel reads the record straight from Solana — trust the chain,
+// not our server
+async function refreshProof() {
+  if (!agentWallet) return;
+  try {
+    const r = await fetch('https://api.devnet.solana.com', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSignaturesForAddress', params: [agentWallet, { limit: 15 }] })
+    }).then(x => x.json());
+    const rows = (r.result || []).filter(x => x.memo);
+    if (!rows.length) return;
+    $('proof').innerHTML = rows.map(x => {
+      const raw = x.memo.replace(/^\[\d+\]\s*/, '');
+      let label = raw.slice(0, 80);
+      try {
+        const m = JSON.parse(raw);
+        label = m.kind === 'take'
+          ? `take · ${m.handle} was ${m.verdict || m.stance}`
+          : `fade call · ${m.fixtureId || ''} ${m.side ? '(' + m.side.split(' ')[0] + ')' : ''}`;
+      } catch {}
+      const t = x.blockTime ? new Date(x.blockTime * 1000).toLocaleTimeString() : '';
+      return `<div class="tk"><span class="v"><a href="https://explorer.solana.com/tx/${x.signature}?cluster=devnet" target="_blank">tx ↗</a></span>` +
+             `<span class="h">⛓</span><span class="t">${label} <span style="color:var(--muted)">${t}</span></span></div>`;
+    }).join('');
+  } catch {}
+}
+setInterval(refreshProof, 30_000);
+
+// the commits tile opens the wallet's full record on Solana Explorer
+{
+  const tile = $('t-chain').parentElement;
+  tile.style.cursor = 'pointer';
+  tile.title = 'view the full record on Solana Explorer';
+  tile.addEventListener('click', () => {
+    if (agentWallet) window.open(`https://explorer.solana.com/address/${agentWallet}?cluster=devnet`, '_blank');
+  });
+}
+
 es.addEventListener('hello', e => {
   const d = JSON.parse(e.data);
   $('mode').innerHTML = `<span class="dot"></span>${d.mode} mode`;
   $('wallet').textContent = `agent: ${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`;
+  agentWallet = d.wallet;
+  refreshProof();
 });
 es.addEventListener('tick', e => {
   const t = JSON.parse(e.data);
@@ -455,7 +499,10 @@ es.addEventListener('published', e => {
   const d = JSON.parse(e.data);
   const rec = signals.get(d.id);
   if (rec) { rec.sig.chain = d.chain; upsertSignal(rec.sig); }
-  if (d.chain?.sig) $('t-chain').textContent = ++chainCount;
+  if (d.chain?.sig) {
+    $('t-chain').textContent = ++chainCount;
+    setTimeout(refreshProof, 2500); // give the RPC a beat to index it
+  }
 });
 es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
 es.addEventListener('cancelled', e => {
@@ -859,6 +906,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   fillRules(st.strategy);
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
+  if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
 });
 </script>
 </body>
