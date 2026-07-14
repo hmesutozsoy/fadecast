@@ -179,6 +179,36 @@ The engine's assumptions got *better* on the real venue: the France–Spain
 semifinal book showed a 0.25c spread with six-figure depth — tighter than the
 0.5c the strategy budgets for.
 
+### Arming the bot (operator only)
+
+Two chains, two jobs: **Solana devnet** is the proof rail (test SOL, real
+timestamps); **Polygon** is the money rail (Polymarket, real USDC). Only the
+Polygon side ever touches funds.
+
+1. Export the **private key** of your Polymarket account — *never the seed
+   phrase*. Email login: Polymarket → settings → Export private key
+   (`POLY_SIGNATURE_TYPE=1`, and set `POLY_FUNDER` to your Polymarket deposit
+   address). MetaMask login: export that account's key
+   (`POLY_SIGNATURE_TYPE=2`, `POLY_FUNDER` = deposit address). Raw EOA
+   trading: `POLY_SIGNATURE_TYPE=0`, no funder.
+2. Set the environment **in your own shell** (or the host's env dashboard) —
+   never in a file that gets committed, never in a chat:
+
+```bash
+POLY_TRADE=live \
+POLY_PRIVATE_KEY=0x... \
+POLY_SIGNATURE_TYPE=1 \
+POLY_FUNDER=0xYourPolymarketAddress \
+POLY_SIZE=5 POLY_MAX_EXPOSURE=15 POLY_MAX_LOSS=20 \
+MODE=poly POLY_SLUG=fifwc-fra-esp-2026-07-14 POLY_QUESTION=France \
+node server.js
+```
+
+Allocation controls: `POLY_SIZE` is USD per fade, `POLY_MAX_EXPOSURE` caps
+concurrently open exposure, and `POLY_MAX_LOSS` is a **kill switch** — if
+session losses reach it, the bot disarms itself and stops entering. Omit
+`POLY_TRADE=live` and the same command runs the full session in paper mode.
+
 ## Your rules, the bot's hands
 
 The **⚙ Fade rules** panel exposes the strategy's five knobs — panic

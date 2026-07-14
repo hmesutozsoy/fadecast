@@ -165,7 +165,9 @@ async function startPoly({ slug, question }) {
   currentSrc = src;
   polyExec = new PolymarketExecutor(market, src, {
     mode: process.env.POLY_TRADE || 'paper',
-    sizeUsd: Number(process.env.POLY_SIZE || 5)
+    sizeUsd: Number(process.env.POLY_SIZE || 5),
+    maxExposureUsd: Number(process.env.POLY_MAX_EXPOSURE || 15),
+    maxLossUsd: Number(process.env.POLY_MAX_LOSS || 20)
   });
   src.on('tick', t => engine.addTick(t));
   src.on('error', e => console.warn('[poly]', e.message));
@@ -309,6 +311,7 @@ server.listen(PORT, async () => {
   if (PUBLISH) await publisher.ensureFunds().then(b => console.log(`[fadecast] devnet balance: ${b / 1e9} SOL`));
   (MODE === 'live' || MODE === 'record' ? startLive()
     : MODE === 'follow' ? startFollow()
+    : MODE === 'poly' ? startPoly({ slug: process.env.POLY_SLUG, question: process.env.POLY_QUESTION || '' })
     : startReplay())
     .catch(e => {
       console.error('[fadecast] source failed:', e.message);

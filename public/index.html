@@ -854,8 +854,10 @@ function tradeLine(o) {
 }
 function tradingHeader(t) {
   if (!t) return;
-  $('tmode').textContent = `— ${t.mode.toUpperCase()} · $${t.sizeUsd}/fade · realized ${t.realizedUsd >= 0 ? '+' : ''}$${t.realizedUsd}`;
-  $('tmode').style.color = t.mode === 'live' ? 'var(--critical)' : 'var(--warning)';
+  $('tmode').textContent = t.disarmed
+    ? `— DISARMED · ${t.disarmed}`
+    : `— ${t.mode.toUpperCase()} · $${t.sizeUsd}/fade · open $${t.exposureUsd ?? 0}/${t.maxExposureUsd} · realized ${t.realizedUsd >= 0 ? '+' : ''}$${t.realizedUsd}`;
+  $('tmode').style.color = t.disarmed ? 'var(--critical)' : t.mode === 'live' ? 'var(--critical)' : 'var(--warning)';
 }
 es.addEventListener('trade', e => { tradeLine(JSON.parse(e.data)); fetch('/api/state').then(r => r.json()).then(st => tradingHeader(st.trading)); });
 
