@@ -5,8 +5,9 @@
       "fixtureId": "wc2026-sf-fra-esp",
       "home": "France",
       "away": "Spain",
-      "stage": "Semifinal",
-      "kickoff": "2026-07-15"
+      "stage": "Semifinal · 19:00 UTC",
+      "kickoff": "2026-07-14",
+      "polymarketSlug": "fifwc-fra-esp-2026-07-14"
     },
     {
       "fixtureId": "wc2026-final",

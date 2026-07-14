@@ -230,6 +230,7 @@
     <button id="go" class="chip" style="cursor:pointer">Start</button>
     <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
     <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
+    <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="trade the live Polymarket market">🔴 Go live</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
     <button id="connect" class="chip" style="cursor:pointer" title="connect your Solana wallet (devnet)">👛 Connect wallet</button>
     <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
@@ -263,6 +264,8 @@
     <div class="pundit-box" id="fadeboard" style="max-height:230px"><div class="empty">No receipts yet.</div></div>
     <h2 style="margin-top:16px">Proof ⛓ <span style="text-transform:none;letter-spacing:0">— read live from Solana, not from our server</span></h2>
     <div class="pundit-box" id="proof" style="max-height:230px"><div class="empty">Nothing on-chain yet.</div></div>
+    <h2 style="margin-top:16px">Trading 💱 <span id="tmode" style="text-transform:none;letter-spacing:0">— replay mode: no venue</span></h2>
+    <div class="pundit-box" id="trades" style="max-height:230px"><div class="empty">Go live to route fades to Polymarket.</div></div>
   </section>
 </div>
 
@@ -761,11 +764,17 @@ es.addEventListener('status', e => {
 
 // ---- upcoming fixtures (live via TxLINE once activated) ----
 fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
-  const days = iso => Math.max(0, Math.ceil((new Date(iso + 'T12:00:00Z') - Date.now()) / 86400e3));
+  liveSlug = (matches || []).find(m => m.polymarketSlug)?.polymarketSlug || liveSlug;
+  const when = iso => {
+    const ms = new Date(iso + 'T19:00:00Z') - Date.now();
+    if (ms < 0) return 'now';
+    if (ms < 86400e3) return `in ${Math.max(1, Math.round(ms / 3600e3))}h 🔥`;
+    return `in ${Math.ceil(ms / 86400e3)}d`;
+  };
   $('upcoming').innerHTML = (matches || []).map(m => `
     <span class="up">🔜 <b>${m.home} vs ${m.away}</b>
-      <span class="when">${new Date(m.kickoff + 'T12:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · in ${days(m.kickoff)}d</span>
-      <span class="stage">${m.stage} · live via TxLINE</span></span>`).join('');
+      <span class="when">${new Date(m.kickoff + 'T19:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${when(m.kickoff)}</span>
+      <span class="stage">${m.stage} · live</span></span>`).join('');
 });
 
 // ---- your wallet (Phantom, devnet) ----
@@ -818,6 +827,37 @@ $('r-reset').addEventListener('click', async () => {
   await fetch('/api/replay?match=' + encodeURIComponent($('pick').value));
   location.replace(location.pathname + '?s=' + Date.now());
 });
+
+// ---- go live: route the engine to a real Polymarket market ----
+let liveSlug = null; // prefilled from upcoming.json
+$('golive').addEventListener('click', async () => {
+  const slug = prompt('Polymarket event slug', liveSlug || 'fifwc-fra-esp-2026-07-14');
+  if (!slug) return;
+  const question = prompt('Which market? (word from the question)', 'France') || '';
+  const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(slug)}&question=${encodeURIComponent(question)}`).then(x => x.json());
+  if (!r.ok) { alert('Polymarket error: ' + r.error); return; }
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+
+let tradesEmpty = true;
+function tradeLine(o) {
+  const box = $('trades');
+  if (tradesEmpty) { box.innerHTML = ''; tradesEmpty = false; }
+  const el = document.createElement('div');
+  el.className = 'tk';
+  const pnl = o.pnlUsd != null
+    ? ` · <span class="${o.pnlUsd >= 0 ? 'pnl-pos' : 'pnl-neg'}">${o.pnlUsd >= 0 ? '+' : ''}$${o.pnlUsd}</span>` : '';
+  el.innerHTML = `<span class="v">${o.status}</span><span class="h">${o.action}</span>` +
+    `<span class="t">${o.side} ${o.shares} ${o.token} @ ${o.price} ($${o.usd})${pnl}</span>`;
+  box.prepend(el);
+  while (box.children.length > 20) box.lastChild.remove();
+}
+function tradingHeader(t) {
+  if (!t) return;
+  $('tmode').textContent = `— ${t.mode.toUpperCase()} · $${t.sizeUsd}/fade · realized ${t.realizedUsd >= 0 ? '+' : ''}$${t.realizedUsd}`;
+  $('tmode').style.color = t.mode === 'live' ? 'var(--critical)' : 'var(--warning)';
+}
+es.addEventListener('trade', e => { tradeLine(JSON.parse(e.data)); fetch('/api/state').then(r => r.json()).then(st => tradingHeader(st.trading)); });
 
 // ---- quick bet: virtual bankroll, client-side, zero wallet friction ----
 let bank = Number(localStorage.getItem('fc_bank') || 100);
@@ -907,6 +947,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   $('t-chain').textContent = st.published || 0;
   chainCount = st.published || 0;
   if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
+  if (st.trading) { tradingHeader(st.trading); (st.trading.orders || []).forEach(tradeLine); }
 });
 </script>
 </body>

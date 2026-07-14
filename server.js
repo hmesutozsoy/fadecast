@@ -21,6 +21,7 @@ import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
 import { Crowd } from './lib/crowd.js';
+import { PolymarketSource, PolymarketExecutor, findMarket } from './lib/polymarket.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -47,6 +48,7 @@ const punditLog = [];
 let engine;          // recreated on every replay session
 let currentSrc = null;
 let strategy = {};   // user overrides of the engine's fade rules
+let polyExec = null; // Polymarket executor, active only in poly mode
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -71,7 +73,11 @@ function wireEngine() {
     broadcast('published', { id: signal.id, chain: signal.chain });
     broadcast('draft', outbox.call(signal));
   });
-  engine.on('entered', s => { broadcast('entered', s); commentate(pundit.entered(s)); });
+  engine.on('entered', s => {
+    broadcast('entered', s);
+    commentate(pundit.entered(s));
+    if (polyExec) polyExec.onEntered(s).then(o => o && broadcast('trade', o)).catch(() => {});
+  });
   engine.on('cancelled', s => broadcast('cancelled', s));
   engine.on('resolved', s => {
     broadcast('resolved', s);
@@ -79,6 +85,7 @@ function wireEngine() {
     commentate(pundit.resolved(s));
     broadcast('draft', outbox.receipt(s));
     crowd.scoreResolved(s);
+    if (polyExec) polyExec.onResolved(s).then(o => o && broadcast('trade', o)).catch(() => {});
   });
 }
 wireEngine();
@@ -111,6 +118,7 @@ setInterval(async () => {
 
 async function startReplay({ only = null, speed = SPEED } = {}) {
   if (currentSrc) currentSrc.stop();
+  polyExec = null;            // leaving the venue: replay is simulation again
   wireEngine();               // fresh session: new engine, clean stats
   punditLog.length = 0;
   const recording = !only && fs.existsSync(path.join(__dirname, 'data/recording.jsonl'))
@@ -144,6 +152,27 @@ async function startLive() {
   await tx.stream('/scores/stream', (_evt, data) =>
     broadcast('score', data)); // score events annotate the dashboard timeline
   console.log('[fadecast] live mode: TxLINE SSE connected');
+}
+
+// The real venue: live Polymarket order books in, fades out (paper by default;
+// live only when the operator sets POLY_PRIVATE_KEY and POLY_TRADE=live)
+async function startPoly({ slug, question }) {
+  const market = await findMarket(slug, question);
+  if (currentSrc) currentSrc.stop();
+  wireEngine();
+  punditLog.length = 0;
+  const src = new PolymarketSource(market);
+  currentSrc = src;
+  polyExec = new PolymarketExecutor(market, src, {
+    mode: process.env.POLY_TRADE || 'paper',
+    sizeUsd: Number(process.env.POLY_SIZE || 5)
+  });
+  src.on('tick', t => engine.addTick(t));
+  src.on('error', e => console.warn('[poly]', e.message));
+  src.start();
+  console.log(`[fadecast] POLYMARKET LIVE: ${market.label} (trade mode: ${polyExec.mode})`);
+  broadcast('status', { mode: 'polymarket', note: `live: ${market.label} · ${polyExec.mode}` });
+  return market;
 }
 
 // Generic source: follow a JSONL file of ticks. Anything that can write a line
@@ -184,6 +213,7 @@ const server = http.createServer(async (req, res) => {
       wallet: publisher.address,
       published: publisher.published.length,
       strategy: engine.p,
+      trading: polyExec ? polyExec.state() : null,
       pundit: punditLog.slice(-20),
       drafts: outbox.drafts.slice(-12),
       crowd: crowd.state(),
@@ -215,6 +245,15 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/matches') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(listMatches()));
+  }
+  if (url.pathname === '/api/poly/start') {
+    const slug = url.searchParams.get('slug');
+    const question = url.searchParams.get('question') || '';
+    if (!slug) { res.writeHead(400); return res.end('{"ok":false,"error":"slug required"}'); }
+    startPoly({ slug, question })
+      .then(m => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, market: m.label, mode: polyExec.mode })); })
+      .catch(e => { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); });
+    return;
   }
   if (url.pathname === '/api/upcoming') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

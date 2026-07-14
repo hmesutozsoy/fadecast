@@ -158,6 +158,27 @@ Replay src ──┘        │                            │
   upgraded to live Claude-generated lines (raw fetch, no SDK, hard fallback).
 - `server.js` — wiring + dashboard host. No frameworks; Node stdlib + `@solana/web3.js`.
 
+## Trade it for real — Polymarket
+
+**🔴 Go live** points the engine at a real Polymarket market: the CLOB order
+book streams in as ticks, and every fade routes to the venue
+(`GET /api/poly/start?slug=<event-slug>&question=France`). Binary markets
+can't short, so the executor maps the fade correctly: fading a spike buys NO,
+fading a crash buys YES; exits sell the held token at the bid.
+
+Three trade modes (`POLY_TRADE` env):
+
+- `paper` (default) — fills simulated at the *live book's actual touch*,
+  logged in the Trading panel with realized P&L. No keys, no risk.
+- `live` — real orders via `@polymarket/clob-client`. Requires
+  `POLY_PRIVATE_KEY` (your Polygon key, env only — never committed) and an
+  explicit `POLY_TRADE=live`. `POLY_SIZE` sets USD per fade (default $5).
+- `off` — signals only.
+
+The engine's assumptions got *better* on the real venue: the France–Spain
+semifinal book showed a 0.25c spread with six-figure depth — tighter than the
+0.5c the strategy budgets for.
+
 ## Your rules, the bot's hands
 
 The **⚙ Fade rules** panel exposes the strategy's five knobs — panic

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "Autonomous World Cup panic-fade agent with a provable on-chain track record. TxLINE live odds in, fade signals on Solana out.",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
     "replay": "MODE=replay node server.js",
@@ -11,6 +13,7 @@
     "subscribe": "node scripts/subscribe.js"
   },
   "dependencies": {
+    "@polymarket/clob-client": "^5.8.1",
     "@solana/web3.js": "^1.95.0"
   },
   "optionalDependencies": {
