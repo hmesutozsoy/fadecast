@@ -135,29 +135,35 @@
   .tile.win-pulse { animation: winPulse 1.4s ease; }
   @keyframes winPulse { 0% { box-shadow: none; } 25% { box-shadow: 0 0 0 2px var(--good), 0 0 26px rgba(12,163,12,.5); } 100% { box-shadow: none; } }
 
-  /* ---- fade rules panel ---- */
-  #rules {
+  /* ---- floating config panels (fade rules + trading setup) ---- */
+  #rules, #setup {
     position: fixed; top: 70px; right: 24px; width: 380px; z-index: 30;
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 16px; box-shadow: 0 14px 44px rgba(0,0,0,.6);
+    max-height: calc(100vh - 100px); overflow-y: auto;
   }
-  #rules .rhead { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-  #rules .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-  #rules label { font-size: 12.5px; color: var(--ink); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
-  #rules label span { font-weight: 400; font-size: 10.5px; color: var(--muted); min-height: 26px; }
-  #rules input {
+  #rules .rhead, #setup .rhead { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  #rules .rgrid, #setup .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  #rules label, #setup label { font-size: 12.5px; color: var(--ink); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+  #rules label span, #setup label span { font-weight: 400; font-size: 10.5px; color: var(--muted); min-height: 26px; }
+  #rules input, #setup input, #setup select {
     background: var(--page); border: 1px solid var(--border); border-radius: 7px;
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 9px; width: 100%;
   }
-  #rules input:focus { outline: none; border-color: var(--series); }
-  #rules .rbtns { display: flex; gap: 8px; margin-top: 14px; }
-  #rules .rbtns button {
+  #rules input:focus, #setup input:focus { outline: none; border-color: var(--series); }
+  #rules .rbtns, #setup .rbtns { display: flex; gap: 8px; margin-top: 14px; }
+  #rules .rbtns button, #setup .rbtns button {
     flex: 1; padding: 8px 0; border-radius: 8px; font: inherit; font-size: 12.5px; cursor: pointer;
     background: none; border: 1px solid var(--border); color: var(--ink);
   }
   #rules .rbtns #r-apply { border-color: var(--series); color: var(--series); font-weight: 700; }
-  #rules .rbtns button:hover { background: rgba(255,255,255,0.04); }
-  #rules .rnote { margin-top: 10px; font-size: 11px; color: var(--muted); font-style: italic; }
+  #setup .rbtns .primary { border-color: var(--series); color: var(--series); font-weight: 700; }
+  #setup .rbtns .danger { border-color: var(--critical); color: var(--critical); font-weight: 700; }
+  #rules .rbtns button:hover, #setup .rbtns button:hover { background: rgba(255,255,255,0.04); }
+  #rules .rnote, #setup .rnote { margin-top: 10px; font-size: 11px; color: var(--muted); font-style: italic; }
+  #setup .sechead { font-size: 11px; letter-spacing: .12em; color: var(--muted); font-weight: 700; margin: 16px 0 8px; text-transform: uppercase; }
+  #setup .msg { margin-top: 8px; font-size: 12px; min-height: 16px; }
+  #setup .warn { font-size: 11px; color: var(--warning); margin-top: 8px; line-height: 1.5; }
 
   /* ---- quick bet ---- */
   #betcard {
@@ -231,6 +237,7 @@
     <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
     <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
     <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="trade the live Polymarket market">🔴 Go live</button>
+    <button id="setupbtn" class="chip" style="cursor:pointer" title="trading limits, key arming, market making">💱 Trading setup</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
     <button id="connect" class="chip" style="cursor:pointer" title="connect your Solana wallet (devnet)">👛 Connect wallet</button>
     <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
@@ -265,6 +272,7 @@
     <h2 style="margin-top:16px">Proof ⛓ <span style="text-transform:none;letter-spacing:0">— read live from Solana, not from our server</span></h2>
     <div class="pundit-box" id="proof" style="max-height:230px"><div class="empty">Nothing on-chain yet.</div></div>
     <h2 style="margin-top:16px">Trading 💱 <span id="tmode" style="text-transform:none;letter-spacing:0">— replay mode: no venue</span></h2>
+    <div id="mmstat" style="font-size:12px;color:var(--ink-2);margin:-4px 0 8px;font-variant-numeric:tabular-nums"></div>
     <div class="pundit-box" id="trades" style="max-height:230px"><div class="empty">Go live to route fades to Polymarket.</div></div>
   </section>
 </div>
@@ -294,6 +302,53 @@
     <button id="r-reset">Reset to bot defaults</button>
   </div>
   <div class="rnote">Your rules, the bot's hands — every custom-strategy call still goes on-chain.</div>
+</div>
+
+<div id="setup" hidden>
+  <div class="rhead">💱 Trading setup</div>
+
+  <div class="sechead">Allocation</div>
+  <div class="rgrid">
+    <label>$ per fade<input id="st-size" type="number" step="1" min="1" placeholder="5"></label>
+    <label>Max open $<input id="st-exposure" type="number" step="5" min="1" placeholder="15"></label>
+    <label>Kill switch $<input id="st-loss" type="number" step="5" min="1" placeholder="20"></label>
+  </div>
+  <div class="rbtns"><button id="st-save" class="primary">Save limits</button></div>
+
+  <div class="sechead">Arm live trading (your own instance only)</div>
+  <label>Polymarket account private key<input id="st-key" type="password" placeholder="0x… (never the seed phrase)" autocomplete="off"></label>
+  <div class="rgrid" style="margin-top:10px">
+    <label>Account type
+      <select id="st-sigtype">
+        <option value="1">Email login (proxy)</option>
+        <option value="2">MetaMask (proxy)</option>
+        <option value="0">Raw EOA</option>
+      </select>
+    </label>
+    <label>Funder (deposit address)<input id="st-funder" placeholder="0x… from your profile"></label>
+  </div>
+  <div class="rbtns">
+    <button id="st-arm" class="danger">Arm live</button>
+    <button id="st-disarm">Disarm → paper</button>
+  </div>
+  <div class="warn">⚠ Your key goes to THIS server and is held in memory only. Only arm an instance you run yourself
+    (localhost or your own deploy) — never someone else's website. Shared deployments reject keys by design.</div>
+  <div class="msg" id="st-keymsg"></div>
+
+  <div class="sechead">Market maker — quotes when calm, hides when panic</div>
+  <div class="rgrid">
+    <label>Spread (¢ total)<input id="mm-spread" type="number" step="0.5" min="0.5" placeholder="2"></label>
+    <label>$ per side<input id="mm-size" type="number" step="1" min="1" placeholder="5"></label>
+    <label>Max inventory $<input id="mm-inv" type="number" step="5" min="5" placeholder="20"></label>
+    <label>Panic pause (s)<input id="mm-pause" type="number" step="15" min="15" placeholder="90"></label>
+  </div>
+  <div class="rbtns">
+    <button id="mm-start" class="primary">🏪 Start quoting</button>
+    <button id="mm-stop">Pull quotes</button>
+  </div>
+  <div class="rnote">The fade engine is the risk radar: the instant a panic signal fires, quotes are pulled for the
+    pause window — the exact moment market makers usually get run over.</div>
+  <div class="msg" id="mm-msg"></div>
 </div>
 
 <div id="betcard">
@@ -803,7 +858,65 @@ $('connect').addEventListener('click', async () => {
 });
 
 // ---- fade rules: customize when the bot fades ----
-$('gear').addEventListener('click', () => { $('rules').hidden = !$('rules').hidden; });
+$('gear').addEventListener('click', () => { $('rules').hidden = !$('rules').hidden; $('setup').hidden = true; });
+
+// ---- trading setup: limits, key arming (own instance only), market maker ----
+$('setupbtn').addEventListener('click', () => { $('setup').hidden = !$('setup').hidden; $('rules').hidden = true; });
+
+async function postConfig(cfg, msgEl) {
+  const r = await fetch('/api/trading/config', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg)
+  }).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  if (msgEl) {
+    msgEl.textContent = r.ok ? '✓ saved' : '✕ ' + r.error;
+    msgEl.style.color = r.ok ? 'var(--good)' : 'var(--critical)';
+  }
+  if (r.ok && r.trading) tradingHeader(r.trading);
+  return r;
+}
+$('st-save').addEventListener('click', () => postConfig({
+  sizeUsd: Number($('st-size').value) || undefined,
+  maxExposureUsd: Number($('st-exposure').value) || undefined,
+  maxLossUsd: Number($('st-loss').value) || undefined
+}, $('st-keymsg')));
+$('st-arm').addEventListener('click', async () => {
+  const key = $('st-key').value.trim();
+  if (!key) { $('st-keymsg').textContent = '✕ enter your account private key (not the seed phrase)'; $('st-keymsg').style.color = 'var(--critical)'; return; }
+  const r = await postConfig({
+    privateKey: key,
+    signatureType: Number($('st-sigtype').value),
+    funder: $('st-funder').value.trim() || undefined
+  }, $('st-keymsg'));
+  $('st-key').value = '';                      // never keep the key in the DOM
+  if (r.ok) $('st-keymsg').textContent = '✓ armed LIVE — the bot now trades real money';
+});
+$('st-disarm').addEventListener('click', () => postConfig({ disarm: true }, $('st-keymsg')));
+
+$('mm-start').addEventListener('click', async () => {
+  const q = new URLSearchParams();
+  for (const [p, id] of [['spread', 'mm-spread'], ['size', 'mm-size'], ['maxInv', 'mm-inv'], ['pause', 'mm-pause']]) {
+    if ($(id).value !== '') q.set(p, $(id).value);
+  }
+  const r = await fetch('/api/mm/start?' + q).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  $('mm-msg').textContent = r.ok ? `✓ quoting ${r.mm.quotes.bid ?? '—'} / ${r.mm.quotes.ask ?? '—'} (${r.mm.mode})` : '✕ ' + r.error;
+  $('mm-msg').style.color = r.ok ? 'var(--good)' : 'var(--critical)';
+});
+$('mm-stop').addEventListener('click', async () => {
+  const r = await fetch('/api/mm/stop').then(x => x.json());
+  $('mm-msg').textContent = r.ok ? '✓ quotes pulled' : '✕ failed';
+  $('mm-msg').style.color = 'var(--warning)';
+});
+
+function mmLine(m) {
+  if (!m) { $('mmstat').textContent = ''; return; }
+  $('mmstat').textContent = !m.running
+    ? '🏪 market maker: stopped'
+    : m.paused
+      ? `🏪 PANIC PAUSE — quotes pulled · pos ${m.posShares} · realized $${m.realizedUsd}`
+      : `🏪 quoting ${m.quotes.bid ?? '—'} / ${m.quotes.ask ?? '—'} · pos ${m.posShares} (${m.inventoryUsd ?? 0}$) · realized $${m.realizedUsd} · unrealized $${m.unrealizedUsd}`;
+  $('mmstat').style.color = m.paused ? 'var(--critical)' : 'var(--ink-2)';
+}
+setInterval(() => fetch('/api/state').then(r => r.json()).then(st => { if (st.trading) tradingHeader(st.trading); mmLine(st.mm); }).catch(() => {}), 8000);
 function fillRules(p) {
   if (!p) return;
   $('r-threshold').value = Math.round(p.threshold * 100);
@@ -950,6 +1063,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   chainCount = st.published || 0;
   if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
   if (st.trading) { tradingHeader(st.trading); (st.trading.orders || []).forEach(tradeLine); }
+  mmLine(st.mm);
 });
 </script>
 </body>

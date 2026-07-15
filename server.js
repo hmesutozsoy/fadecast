@@ -21,7 +21,7 @@ import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
 import { Crowd } from './lib/crowd.js';
-import { PolymarketSource, PolymarketExecutor, findMarket } from './lib/polymarket.js';
+import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket } from './lib/polymarket.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -49,6 +49,8 @@ let engine;          // recreated on every replay session
 let currentSrc = null;
 let strategy = {};   // user overrides of the engine's fade rules
 let polyExec = null; // Polymarket executor, active only in poly mode
+let polyMarket = null, polySrc = null;
+let mm = null;       // market maker, optional, poly mode only
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -68,6 +70,7 @@ function wireEngine() {
   engine.on('signal', async signal => {
     broadcast('signal', signal);
     commentate(pundit.signal(signal));
+    if (mm) mm.panic(signal); // market maker stands down during panic
     const rec = await publisher.publish(signal);
     signal.chain = { sig: rec.sig, explorer: rec.explorer, hash: publisher.hash(signal) };
     broadcast('published', { id: signal.id, chain: signal.chain });
@@ -118,7 +121,9 @@ setInterval(async () => {
 
 async function startReplay({ only = null, speed = SPEED } = {}) {
   if (currentSrc) currentSrc.stop();
+  if (mm) { mm.stop(); mm = null; }
   polyExec = null;            // leaving the venue: replay is simulation again
+  polyMarket = polySrc = null;
   wireEngine();               // fresh session: new engine, clean stats
   punditLog.length = 0;
   const recording = !only && fs.existsSync(path.join(__dirname, 'data/recording.jsonl'))
@@ -159,10 +164,12 @@ async function startLive() {
 async function startPoly({ slug, question }) {
   const market = await findMarket(slug, question);
   if (currentSrc) currentSrc.stop();
+  if (mm) { mm.stop(); mm = null; }
   wireEngine();
   punditLog.length = 0;
   const src = new PolymarketSource(market);
   currentSrc = src;
+  polyMarket = market; polySrc = src;
   polyExec = new PolymarketExecutor(market, src, {
     mode: process.env.POLY_TRADE || 'paper',
     sizeUsd: Number(process.env.POLY_SIZE || 5),
@@ -216,6 +223,7 @@ const server = http.createServer(async (req, res) => {
       published: publisher.published.length,
       strategy: engine.p,
       trading: polyExec ? polyExec.state() : null,
+      mm: mm ? mm.state() : null,
       pundit: punditLog.slice(-20),
       drafts: outbox.drafts.slice(-12),
       crowd: crowd.state(),
@@ -256,6 +264,52 @@ const server = http.createServer(async (req, res) => {
       .then(m => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, market: m.label, mode: polyExec.mode })); })
       .catch(e => { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); });
     return;
+  }
+  // runtime trading config. Limits are open; the PRIVATE KEY is accepted only
+  // from localhost or when the operator self-hosts with ALLOW_KEY_ENTRY=1 —
+  // never collect other people's keys on a shared deployment.
+  if (url.pathname === '/api/trading/config' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+      try {
+        const cfg = JSON.parse(body || '{}');
+        if (!polyExec) return json(400, { ok: false, error: 'go live on a Polymarket market first' });
+        polyExec.setLimits(cfg);
+        if (cfg.disarm) polyExec.disarm();
+        if (cfg.privateKey) {
+          const ip = req.socket.remoteAddress || '';
+          const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
+          if (!local && process.env.ALLOW_KEY_ENTRY !== '1') {
+            return json(403, { ok: false, error: 'key entry is disabled on shared deployments — run your own instance (see README: Arming the bot)' });
+          }
+          polyExec.arm({ privateKey: cfg.privateKey, signatureType: cfg.signatureType, funder: cfg.funder });
+        }
+        json(200, { ok: true, trading: polyExec.state() });
+      } catch (e) { json(400, { ok: false, error: e.message }); }
+    });
+    return;
+  }
+  if (url.pathname === '/api/mm/start') {
+    if (!polyMarket || !polySrc || !polyExec) { res.writeHead(400); return res.end('{"ok":false,"error":"go live on a Polymarket market first"}'); }
+    const n = (k, d) => { const v = Number(url.searchParams.get(k)); return isFinite(v) && v > 0 ? v : d; };
+    if (mm) mm.stop();
+    mm = new MarketMaker(polyMarket, polySrc, polyExec, {
+      spread: n('spread', 2) / 100,       // cents on the wire
+      sizeUsd: n('size', 5),
+      maxInventoryUsd: n('maxInv', 20),
+      pauseSec: n('pause', 90),
+      mode: polyExec.mode === 'live' ? 'live' : 'paper'
+    });
+    mm.start();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, mm: mm.state() }));
+  }
+  if (url.pathname === '/api/mm/stop') {
+    if (mm) { mm.stop(); }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, mm: mm ? mm.state() : null }));
   }
   if (url.pathname === '/api/upcoming') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
