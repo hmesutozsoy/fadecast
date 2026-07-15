@@ -332,6 +332,7 @@ const server = http.createServer(async (req, res) => {
       confirm: num('confirm'),            // seconds
       hold: num('hold'),                  // seconds
       stopLoss: num('stop', 100),         // pts -> prob
+      side: ['fade', 'ride'].includes(q('side')) ? q('side') : undefined,
       band: (num('bandLo', 100) !== undefined && num('bandHi', 100) !== undefined)
         ? [num('bandLo', 100), num('bandHi', 100)] : undefined
     };

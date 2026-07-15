@@ -146,7 +146,7 @@
   #rules .rgrid, #setup .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
   #rules label, #setup label { font-size: 12.5px; color: var(--ink); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
   #rules label span, #setup label span { font-weight: 400; font-size: 10.5px; color: var(--muted); min-height: 26px; }
-  #rules input, #setup input, #setup select {
+  #rules input, #rules select, #setup input, #setup select {
     background: var(--page); border: 1px solid var(--border); border-radius: 7px;
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 9px; width: 100%;
   }
@@ -288,8 +288,14 @@
 </section>
 
 <div id="rules" hidden>
-  <div class="rhead">⚙ When should the bot fade?</div>
+  <div class="rhead">⚙ When should the bot trade — and which side?</div>
   <div class="rgrid">
+    <label>Side <span>against the panic, or with it</span>
+      <select id="r-side">
+        <option value="fade">🎯 Fade the panic</option>
+        <option value="ride">🌊 Ride the wave</option>
+      </select>
+    </label>
     <label>Panic threshold <span>jump size that triggers a signal (pts)</span><input id="r-threshold" type="number" step="1" min="2" max="30"></label>
     <label>Confirmation <span>seconds of calm before entering</span><input id="r-confirm" type="number" step="5" min="0" max="300"></label>
     <label>Hold <span>seconds until the fade exits</span><input id="r-hold" type="number" step="10" min="30" max="900"></label>
@@ -919,6 +925,7 @@ function mmLine(m) {
 setInterval(() => fetch('/api/state').then(r => r.json()).then(st => { if (st.trading) tradingHeader(st.trading); mmLine(st.mm); }).catch(() => {}), 8000);
 function fillRules(p) {
   if (!p) return;
+  $('r-side').value = p.side || 'fade';
   $('r-threshold').value = Math.round(p.threshold * 100);
   $('r-confirm').value = p.confirm;
   $('r-hold').value = p.hold;
@@ -927,7 +934,7 @@ function fillRules(p) {
   $('r-bandHi').value = Math.round(p.band[1] * 100);
 }
 $('r-apply').addEventListener('click', async () => {
-  const q = new URLSearchParams({ match: $('pick').value });
+  const q = new URLSearchParams({ match: $('pick').value, side: $('r-side').value });
   for (const [param, id] of Object.entries(
     { threshold: 'r-threshold', confirm: 'r-confirm', hold: 'r-hold', stop: 'r-stop', bandLo: 'r-bandLo', bandHi: 'r-bandHi' })) {
     const v = $(id).value;

@@ -209,6 +209,28 @@ concurrently open exposure, and `POLY_MAX_LOSS` is a **kill switch** — if
 session losses reach it, the bot disarms itself and stops entering. Omit
 `POLY_TRADE=live` and the same command runs the full session in paper mode.
 
+## Fade or Ride — pick a side, the chain keeps score
+
+The detector is side-agnostic: **Fade** trades against the panic (mean
+reversion), **Ride** trades with it (momentum) — same signals, opposite bet.
+Pick your side in the ⚙ Fade rules panel.
+
+We backtested both, defaults and $5 clips, over the **real Polymarket price
+history of all 101 completed WC2026 matches** (`npm run backtest`,
+reproducible):
+
+| strategy | trades | win rate | net |
+|---|---|---|---|
+| Fade | 179 | 22% | **−$66.66** |
+| Ride | 179 | 37% | **+$21.73** |
+
+At minute-scale, the 2026 in-play market *under*-reacts to goals — momentum
+collects what mean reversion pays. (Caveat: 1-minute bars are the finest
+history Polymarket serves; sub-minute overshoots — where the fade edge lived
+in our 2022 research — are invisible here. Live 3-second polling is the real
+test.) We built a fader; the data said ride; so you choose — and every call
+lands on-chain either way.
+
 ## Your rules, the bot's hands
 
 The **⚙ Fade rules** panel exposes the strategy's five knobs — panic

@@ -10,7 +10,8 @@
     "start": "node server.js",
     "replay": "MODE=replay node server.js",
     "live": "MODE=live node server.js",
-    "subscribe": "node scripts/subscribe.js"
+    "subscribe": "node scripts/subscribe.js",
+    "backtest": "node scripts/backtest.js"
   },
   "dependencies": {
     "@polymarket/clob-client": "^5.8.1",
