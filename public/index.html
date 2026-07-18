@@ -6,26 +6,31 @@
 <title>FadeCast — provable panic trading</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Polymarket-inspired dark navy palette */
   :root {
-    --page: #0d0d0d;
-    --surface: #1a1a19;
+    --page: #141a21;
+    --surface: #1d2530;
     --ink: #ffffff;
-    --ink-2: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
-    --baseline: #383835;
-    --border: rgba(255,255,255,0.10);
-    --series: #3987e5;      /* categorical slot 1, dark step */
-    --good: #0ca30c;
-    --warning: #fab219;
+    --ink-2: #c4ccd8;
+    --muted: #7c8796;
+    --grid: #2a3441;
+    --baseline: #39455a;
+    --border: rgba(255,255,255,0.08);
+    --series: #4a9eff;
+    --good: #27ae60;
+    --warning: #f5a623;
     --serious: #ec835a;
-    --critical: #d03b3b;
+    --critical: #e14c4c;
+    --chart-home: #ff5952;  /* first outcome line, Polymarket red */
+    --chart-away: #4a9eff;  /* second outcome line, Polymarket blue */
   }
   * { margin: 0; box-sizing: border-box; }
   body {
     background: var(--page); color: var(--ink);
-    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     padding: 24px; max-width: 1240px; margin: 0 auto;
   }
@@ -61,14 +66,19 @@
   .up .stage { color: var(--muted); font-size: 13px; }
 
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; transition: border-color .2s, transform .2s; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; transition: border-color .2s, transform .2s; }
   .tile:hover { border-color: var(--baseline); transform: translateY(-1px); }
   .tile .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
   .tile .v { font-size: 26px; margin-top: 2px; }
   .tile .v small { font-size: 13px; color: var(--ink-2); }
 
   .matches { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .2s, transform .2s; }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; cursor: pointer; transition: border-color .2s, transform .2s; }
+  /* Polymarket-style outcome rows: dot · team · price in cents */
+  .match .outs { display: flex; gap: 22px; margin: 2px 0 8px; font-size: 13px; }
+  .match .out { display: flex; align-items: center; gap: 7px; color: var(--ink-2); }
+  .match .out .odot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .match .out b { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 15px; }
   .match:hover { border-color: var(--series); transform: translateY(-2px); }
   .match .hintplay { float: right; font-size: 10px; color: var(--muted); opacity: 0; transition: opacity .2s; }
   .match:hover .hintplay { opacity: 1; }
@@ -277,7 +287,6 @@
   <div class="tile"><div class="k">Cumulative P&amp;L</div><div class="v" id="t-pnl">0.0<small> pts</small></div></div>
 </div>
 
-<div id="cards"></div>
 
 <div class="matches" id="matches"></div>
 
@@ -424,6 +433,10 @@ function matchCard(fixtureId, label) {
   });
   el.innerHTML = `
     <div class="row"><h3>${label || fixtureId}</h3><span class="price">—</span></div>
+    <div class="outs">
+      <span class="out"><span class="odot" style="background:var(--chart-home)"></span><span class="ta">Home</span> <b class="pa">—</b></span>
+      <span class="out"><span class="odot" style="background:var(--chart-away)"></span><span class="tb">Away</span> <b class="pb">—</b></span>
+    </div>
     <canvas width="600" height="180"></canvas>
     <div class="panic-wrap">
       <div class="panic-bar"><div class="panic-fill"></div></div>
@@ -431,10 +444,27 @@ function matchCard(fixtureId, label) {
     </div>`;
   $('matches').appendChild(el);
   m = { el, canvas: el.querySelector('canvas'), price: el.querySelector('.price'),
+        ta: el.querySelector('.ta'), tb: el.querySelector('.tb'),
+        pa: el.querySelector('.pa'), pb: el.querySelector('.pb'),
         fill: el.querySelector('.panic-fill'), plabel: el.querySelector('.panic-label'),
         series: [], panic: 0, panicT: 0 };
   matches.set(fixtureId, m);
+  setTeams(m, label || fixtureId);
   return m;
+}
+
+// "France vs. Morocco — Quarterfinal" -> ["France", "Morocco"]
+function setTeams(m, label) {
+  const parts = (label || '').split('—')[0].split(/ vs\.? /i).map(s => s.trim());
+  if (parts.length === 2 && parts[0] && parts[1]) { m.ta.textContent = parts[0]; m.tb.textContent = parts[1]; }
+}
+
+// Polymarket-style prices: both outcomes, in cents
+function setPrice(m, p) {
+  const c = Math.round(p * 100);
+  m.price.textContent = '';
+  m.pa.textContent = `${c}¢`;
+  m.pb.textContent = `${100 - c}¢`;
 }
 
 function draw(m) {
@@ -446,7 +476,9 @@ function draw(m) {
   const t0 = pts[0][0], t1 = pts[pts.length - 1][0] || 1;
   // fixed probability scale segment around the data, min 0.2 tall, clamped to [0,1]
   let lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
-  const mid = (lo + hi) / 2, half = Math.max(0.1, (hi - lo) / 2 + 0.02);
+  // scale must hold BOTH outcome lines (p and 1-p)
+  const l2 = Math.min(lo, 1 - hi), h2 = Math.max(hi, 1 - lo);
+  const mid = (l2 + h2) / 2, half = Math.max(0.1, (h2 - l2) / 2 + 0.03);
   lo = Math.max(0, mid - half); hi = Math.min(1, mid + half);
   const X = t => pad + (W - 2 * pad) * (t - t0) / Math.max(1, t1 - t0);
   const Y = p => H - pad - (H - 2 * pad) * (p - lo) / (hi - lo);
@@ -456,9 +488,14 @@ function draw(m) {
   for (let i = 1; i < 4; i++) {
     ctx.beginPath(); ctx.moveTo(pad, pad + i * (H - 2 * pad) / 4); ctx.lineTo(W - pad, pad + i * (H - 2 * pad) / 4); ctx.stroke();
   }
-  // the price line — 2px equivalent at this backing scale
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--series');
-  ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  // both outcome lines, Polymarket-style: home in red, away (1-p) in blue
+  const css = getComputedStyle(document.body);
+  ctx.lineWidth = 3.5; ctx.lineJoin = 'round';
+  ctx.strokeStyle = css.getPropertyValue('--chart-away');
+  ctx.beginPath();
+  pts.forEach(([t, p], i) => i ? ctx.lineTo(X(t), Y(1 - p)) : ctx.moveTo(X(t), Y(1 - p)));
+  ctx.stroke();
+  ctx.strokeStyle = css.getPropertyValue('--chart-home');
   ctx.beginPath();
   pts.forEach(([t, p], i) => i ? ctx.lineTo(X(t), Y(p)) : ctx.moveTo(X(t), Y(p)));
   ctx.stroke();
@@ -565,19 +602,20 @@ es.addEventListener('tick', e => {
   if (t.label && m.label !== t.label) {
     m.label = t.label;
     m.el.querySelector('h3').textContent = t.label;
+    setTeams(m, t.label);
     // search just the team names — "France Morocco", not "France vs. Morocco — Quarterfinal"
     const teams = t.label.split('—')[0].replace(/\bvs\.?\b/i, ' ').replace(/\s+/g, ' ').trim();
     $('xlink').href = `https://x.com/search?q=${encodeURIComponent(teams)}&f=live`;
   }
   m.series.push([t.ts, t.price]);
   if (m.series.length > 400) m.series.shift();
-  m.price.textContent = `P(home) ${t.price.toFixed(3)}`;
+  setPrice(m, t.price);
   draw(m);
 });
 es.addEventListener('signal', e => {
   const s = JSON.parse(e.data);
   const m = matchCard(s.fixtureId, s.meta?.label || s.fixtureId);
-  if (s.meta?.label) { m.label = s.meta.label; m.el.querySelector('h3').textContent = s.meta.label; }
+  if (s.meta?.label) { m.label = s.meta.label; m.el.querySelector('h3').textContent = s.meta.label; setTeams(m, s.meta.label); }
   setPanic(m, s.panic);
   upsertSignal(s);
   $('t-signals').textContent = signals.size;
@@ -761,139 +799,12 @@ es.addEventListener('signal', e => {
     document.body.classList.remove('panic-flash'); void document.body.offsetWidth;
     document.body.classList.add('panic-flash');
   }
-  spawnCard(s);
 });
 
-// ---- swipe cards: you vs the bot -------------------------------------------
-const picks = new Map();          // signalId -> 'fade' | 'ride'
-const duel = { you: 0, bot: 0 };
-const openCards = new Map();      // signalId -> card element
-
-// duel tile removed from the UI — the record still accrues in localStorage
-function duelRender() {
-  localStorage.setItem(k('fc_duel'), JSON.stringify(duel));
-}
-{
-  const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
-  if (d) { duel.you = d.you || 0; duel.bot = d.bot || 0; }
-}
-
-function spawnCard(s) {
-  const dirWord = s.direction === 1
-    ? `spiked <b>${s.pre.toFixed(2)} → ${s.det.toFixed(2)}</b>`
-    : `crashed <b>${s.pre.toFixed(2)} → ${s.det.toFixed(2)}</b>`;
-  const el = document.createElement('div');
-  el.className = 'card';
-  el.dataset.fixture = s.fixtureId;
-  el.innerHTML = `
-    <div class="alert">🚨 PANIC DETECTED · ${s.panic}/100</div>
-    <h4>${s.meta?.label || s.fixtureId}</h4>
-    <div class="jump">Market just ${dirWord}</div>
-    <div class="take">${(() => {
-      const t = latestTake.get(s.fixtureId);
-      return t
-        ? `🗣 <b>${t.handle}</b>: “${t.text.length > 80 ? t.text.slice(0, 80) + '…' : t.text}”<br>The bot disagrees — call's on-chain. Fade him?`
-        : 'The bot says the crowd overreacted and is fading it — call committed on-chain. Whose side are you on?';
-    })()}</div>
-    <div class="panic-bar"><div class="panic-fill" style="width:${s.panic}%;background:${s.panic >= 70 ? 'var(--critical)' : 'var(--serious)'}"></div></div>
-    <div class="actions">
-      <button class="ride">🌊 Ride the wave</button>
-      <button class="fade">🎯 Fade with the bot</button>
-    </div>
-    <div class="hint">drag the card: ← ride · fade →</div>
-    <span class="stamp fade">FADED</span>
-    <span class="stamp ride">RIDING</span>`;
-  $('cards').appendChild(el);
-  openCards.set(s.id, el);
-
-  const choose = choice => {
-    if (!openCards.has(s.id)) return;
-    openCards.delete(s.id);
-    picks.set(s.id, choice);
-    el.querySelector(`.stamp.${choice}`).style.opacity = 1;
-    el.classList.add(choice === 'fade' ? 'gone-right' : 'gone-left');
-    setTimeout(() => el.remove(), 300);
-    commitUserCall(s, choice); // wallet connected? your call goes on-chain too
-  };
-  el.querySelector('.ride').addEventListener('click', () => choose('ride'));
-  el.querySelector('.fade').addEventListener('click', () => choose('fade'));
-
-  // drag physics
-  let startX = null, dx = 0;
-  el.addEventListener('pointerdown', ev => {
-    if (ev.target.tagName === 'BUTTON') return;
-    startX = ev.clientX; el.classList.add('dragging'); el.setPointerCapture(ev.pointerId);
-  });
-  el.addEventListener('pointermove', ev => {
-    if (startX === null) return;
-    dx = ev.clientX - startX;
-    el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
-    el.querySelector('.stamp.fade').style.opacity = Math.max(0, Math.min(1, dx / 90));
-    el.querySelector('.stamp.ride').style.opacity = Math.max(0, Math.min(1, -dx / 90));
-  });
-  const release = () => {
-    if (startX === null) return;
-    startX = null; el.classList.remove('dragging');
-    if (dx > 90) choose('fade');
-    else if (dx < -90) choose('ride');
-    else {
-      el.style.transform = '';
-      el.querySelectorAll('.stamp').forEach(x => x.style.opacity = 0);
-    }
-    dx = 0;
-  };
-  el.addEventListener('pointerup', release);
-  el.addEventListener('pointercancel', release);
-}
-
-// your swipe, committed to devnet through your own wallet — the audience's
-// calls get the same proof-of-call treatment as the bot's
-function youLine(html) {
-  const box = $('timeline');
-  if (tlEmpty) { box.innerHTML = ''; tlEmpty = false; }
-  const el = document.createElement('div');
-  el.className = 'tk';
-  el.innerHTML = `<span class="h">@you</span><span class="t">${html}</span>`;
-  box.prepend(el);
-}
-async function commitUserCall(s, choice) {
-  const verb = choice === 'fade' ? 'FADED with the bot' : 'rode the wave';
-  const label = s.meta?.label || s.fixtureId;
-  if (!userProvider || !window.solanaWeb3) return; // not signed in: local pick only
-  try {
-    const W = window.solanaWeb3;
-    const conn = new W.Connection('https://api.devnet.solana.com', 'confirmed');
-    const memo = JSON.stringify({ v: 1, app: 'fadecast', kind: 'user_call', signal: s.id, choice, ts: Date.now() });
-    const data = (W.Buffer ? W.Buffer.from(memo, 'utf8') : new TextEncoder().encode(memo));
-    const tx = new W.Transaction().add(new W.TransactionInstruction({
-      keys: [{ pubkey: userProvider.publicKey, isSigner: true, isWritable: false }],
-      programId: new W.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
-      data
-    }));
-    tx.feePayer = userProvider.publicKey;
-    tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
-    const { signature } = await userProvider.signAndSendTransaction(tx);
-    youLine(`${verb} on ${label} ⛓ <a href="https://explorer.solana.com/tx/${signature}?cluster=devnet" target="_blank">verify ↗</a>`);
-  } catch {
-    youLine(`${verb} on ${label} <span style="color:var(--muted)">(recorded locally — needs devnet SOL to commit)</span>`);
-  }
-}
-
-function settleCard(s) {
-  // signal resolved: score the duel, dismiss an unswiped card
-  const open = openCards.get(s.id);
-  if (open) {
-    openCards.delete(s.id);
-    open.querySelector('.take').innerHTML = '⏱ Market moved before you picked. Too slow!';
-    open.classList.add('gone-left');
-    setTimeout(() => open.remove(), 300);
-  }
-  const botRight = s.pnl > 0;
-  if (botRight) duel.bot++;
-  const pick = picks.get(s.id);
-  if (pick && ((pick === 'fade' && botRight) || (pick === 'ride' && !botRight))) duel.you++;
-  duelRender();
-}
+// swipe cards removed — the bot trades, the chain keeps score
+function settleCard() {}
+const openCards = new Map();
+function loadWalletState() {}
 
 // ---- replay picker / stop ----
 fetch('/api/matches').then(r => r.json()).then(list => {
@@ -1125,18 +1036,16 @@ function tradingHeader(t) {
 }
 es.addEventListener('trade', e => { tradeLine(JSON.parse(e.data)); fetch('/api/state').then(r => r.json()).then(st => tradingHeader(st.trading)); });
 
-// quick-bet card removed — the swipe cards are the participation loop
-function loadWalletState() {
-  const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
-  duel.you = d?.you || 0; duel.bot = d?.bot || 0;
-}
+// quick-bet card and swipe cards removed — participation is watching the
+// bot's live calls settle, on-chain
 
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {
   for (const [fid, m] of Object.entries(st.matches || {})) {
     const card = matchCard(fid, m.meta?.label || fid);
     card.series = m.outcomes.home || Object.values(m.outcomes)[0] || [];
-    if (m.meta?.label) card.el.querySelector('h3').textContent = m.meta.label;
+    if (m.meta?.label) { card.el.querySelector('h3').textContent = m.meta.label; setTeams(card, m.meta.label); }
+    if (card.series.length) setPrice(card, card.series[card.series.length - 1][1]);
     draw(card);
   }
   (st.signals || []).forEach(upsertSignal);
@@ -1159,7 +1068,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
       const card = matchCard(h.fixtureId, h.label);
       const firstLive = card.series.length ? card.series[0][0] : Infinity;
       card.series = [...h.history.filter(p => p[0] < firstLive), ...card.series];
-      if (card.series.length) card.price.textContent = `P(home) ${card.series[card.series.length - 1][1].toFixed(3)}`;
+      if (card.series.length) setPrice(card, card.series[card.series.length - 1][1]);
       draw(card);
     }).catch(() => {});
   }

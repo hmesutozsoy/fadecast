@@ -1,6 +1,62 @@
 {
-  "note": "REAL X posts making calls on the WC2026 knockout matches — found via web search, each verified by loading the actual status page. Verdicts follow from the real results. Texts are short excerpts; the url is the receipt.",
+  "note": "REAL X posts calling the WC2026 knockouts — every status page loaded and verified, follower counts read from the profiles. Verdicts follow from the real results. Texts are short excerpts; the url is the receipt. @amanobviously's viral 'script' post (5.9M views) makes five scoreable calls from one tweet.",
   "posts": [
+    {
+      "fixtureId": "fifwc-fra-mar-2026-07-09",
+      "handle": "@amanobviously", "followers": "5.9M views",
+      "url": "https://x.com/amanobviously/status/2075088738817097836",
+      "text": "FIFA script got leaked: France will eliminate Morocco",
+      "verdict": "right", "note": "France won 2-0"
+    },
+    {
+      "fixtureId": "fifwc-esp-bel-2026-07-10",
+      "handle": "@amanobviously", "followers": "5.9M views",
+      "url": "https://x.com/amanobviously/status/2075088738817097836",
+      "text": "FIFA script got leaked: Spain will eliminate Belgium",
+      "verdict": "right", "note": "Spain won 2-1"
+    },
+    {
+      "fixtureId": "fifwc-nor-eng-2026-07-11",
+      "handle": "@amanobviously", "followers": "5.9M views",
+      "url": "https://x.com/amanobviously/status/2075088738817097836",
+      "text": "FIFA script got leaked: Norway will eliminate England",
+      "verdict": "wrong", "note": "England won 2-1 aet"
+    },
+    {
+      "fixtureId": "fifwc-arg-che-2026-07-11",
+      "handle": "@amanobviously", "followers": "5.9M views",
+      "url": "https://x.com/amanobviously/status/2075088738817097836",
+      "text": "FIFA script got leaked: Argentina will eliminate Switzerland",
+      "verdict": "right", "note": "Argentina won 3-1 aet"
+    },
+    {
+      "fixtureId": "fifwc-fra-esp-2026-07-14",
+      "handle": "@amanobviously", "followers": "5.9M views",
+      "url": "https://x.com/amanobviously/status/2075088738817097836",
+      "text": "FIFA script got leaked: France will eliminate Spain",
+      "verdict": "wrong", "note": "Spain won 2-0"
+    },
+    {
+      "fixtureId": "fifwc-arg-che-2026-07-11",
+      "handle": "@chnmharish", "followers": "12.9K",
+      "url": "https://x.com/chnmharish/status/2076101736289222698",
+      "text": "Argentina 63–37 — a narrow 1-0 or 2-1 more likely, extra time realistic",
+      "verdict": "right", "note": "Argentina won 3-1 aet"
+    },
+    {
+      "fixtureId": "fifwc-fra-esp-2026-07-14",
+      "handle": "@chnmharish", "followers": "12.9K",
+      "url": "https://x.com/chnmharish/status/2077136158040166894",
+      "text": "Predicted Spain to beat France — tense, tactical opening, 0-0 or 1-0 at halftime",
+      "verdict": "right", "note": "Spain won 2-0, 1-0 at the break"
+    },
+    {
+      "fixtureId": "fifwc-fra-esp-2026-07-14",
+      "handle": "@TheAstroNexus", "followers": "8.8K",
+      "url": "https://x.com/TheAstroNexus/status/2076804705779700169",
+      "text": "Football logic heavily favours France — but the planetary combinations support Spain",
+      "verdict": "right", "note": "called Spain against the consensus"
+    },
     {
       "fixtureId": "fifwc-fra-esp-2026-07-14",
       "handle": "@NeilMac555", "followers": "27.8K",
@@ -14,27 +70,6 @@
       "url": "https://x.com/ActionNetworkHQ/status/2077394243417436617",
       "text": "SEMIFINAL BEST BET: England to qualify — \"England have more depth\"",
       "verdict": "wrong", "note": "Argentina won 2-1"
-    },
-    {
-      "fixtureId": "fifwc-eng-arg-2026-07-15",
-      "handle": "@Polymarket", "followers": "1.7M",
-      "url": "https://x.com/Polymarket/status/2076777036828291267",
-      "text": "55% chance England advances to the World Cup final.",
-      "verdict": "wrong", "note": "posted two days out; England went home"
-    },
-    {
-      "fixtureId": "fifwc-eng-arg-2026-07-15",
-      "handle": "@Polymarket", "followers": "1.7M",
-      "url": "https://x.com/Polymarket/status/2077101233035186673",
-      "text": "54% chance Argentina defeats England.",
-      "verdict": "right", "note": "Argentina won 2-1"
-    },
-    {
-      "fixtureId": "fifwc-arg-che-2026-07-11",
-      "handle": "@chnmharish", "followers": "12.9K",
-      "url": "https://x.com/chnmharish/status/2076101736289222698",
-      "text": "Argentina 63–37 — a narrow 1-0 or 2-1 more likely, extra time realistic",
-      "verdict": "right", "note": "Argentina won 3-1 aet"
     }
   ]
 }
