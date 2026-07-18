@@ -244,6 +244,8 @@
     </select>
     <button id="go" class="chip" style="cursor:pointer">Start</button>
     <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
+    <button id="faster" class="chip" style="cursor:pointer" title="double the replay speed">⏩</button>
+    <button id="skipend" class="chip" style="cursor:pointer" title="jump to the end of this replay">⏭</button>
     <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
     <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
     <button id="setupbtn" class="chip" style="cursor:pointer" title="Polymarket wallet, trading limits, market making">💠 Polymarket wallet</button>
@@ -327,11 +329,15 @@
 
   <div class="sechead">Allocation</div>
   <div class="rgrid">
-    <label>$ per fade<input id="st-size" type="number" step="1" min="1" placeholder="5"></label>
-    <label>Max open $<input id="st-exposure" type="number" step="5" min="1" placeholder="15"></label>
-    <label>Kill switch $<input id="st-loss" type="number" step="5" min="1" placeholder="20"></label>
+    <label>$ per fade<span>how much USDC the bot puts on each individual signal</span>
+      <input id="st-size" type="number" step="1" min="1" placeholder="5"></label>
+    <label>Max open $<span>total $ allowed in open positions at once — new signals are skipped past this</span>
+      <input id="st-exposure" type="number" step="5" min="1" placeholder="15"></label>
+    <label>Kill switch $<span>if realized losses reach this, the bot disarms itself and stops trading</span>
+      <input id="st-loss" type="number" step="5" min="1" placeholder="20"></label>
   </div>
   <div class="rbtns"><button id="st-save" class="primary">Save limits</button></div>
+  <div class="msg" id="st-limitsmsg"></div>
 
   <div class="sechead">Connect your Polymarket wallet (your own instance only)</div>
   <label>Polymarket account private key<input id="st-key" type="password" placeholder="0x… (never the seed phrase)" autocomplete="off"></label>
@@ -355,10 +361,14 @@
 
   <div class="sechead">Market maker — quotes when calm, hides when panic</div>
   <div class="rgrid">
-    <label>Spread (¢ total)<input id="mm-spread" type="number" step="0.5" min="0.5" placeholder="2"></label>
-    <label>$ per side<input id="mm-size" type="number" step="1" min="1" placeholder="5"></label>
-    <label>Max inventory $<input id="mm-inv" type="number" step="5" min="5" placeholder="20"></label>
-    <label>Panic pause (s)<input id="mm-pause" type="number" step="15" min="15" placeholder="90"></label>
+    <label>Spread (¢ total)<span>gap between your buy and sell quotes — you earn this on a round trip</span>
+      <input id="mm-spread" type="number" step="0.5" min="0.5" placeholder="2"></label>
+    <label>$ per side<span>size of each quote, both buy and sell</span>
+      <input id="mm-size" type="number" step="1" min="1" placeholder="5"></label>
+    <label>Max inventory $<span>position cap — past it the growing side stops quoting</span>
+      <input id="mm-inv" type="number" step="5" min="5" placeholder="20"></label>
+    <label>Panic pause (s)<span>how long to pull quotes after the fade engine detects panic</span>
+      <input id="mm-pause" type="number" step="15" min="15" placeholder="90"></label>
   </div>
   <div class="rbtns">
     <button id="mm-start" class="primary">🏪 Start quoting</button>
@@ -403,6 +413,7 @@ function matchCard(fixtureId, label) {
   el.className = 'match';
   el.title = 'click to replay this match from kickoff';
   el.addEventListener('click', async () => {
+    if (isLive) return;   // live market card is not a replay launcher
     await fetch(`/api/replay?match=${encodeURIComponent(fixtureId)}`);
     location.replace(location.pathname + '?s=' + Date.now());
   });
@@ -837,6 +848,14 @@ $('go').addEventListener('click', async () => {
 $('stop').addEventListener('click', async () => {
   await fetch('/api/replay/stop');
 });
+$('faster').addEventListener('click', async () => {
+  const r = await fetch('/api/replay/speed?mult=2').then(x => x.json()).catch(() => null);
+  if (r?.speed) toast(`⏩ replay speed: ${r.speed}×`);
+});
+$('skipend').addEventListener('click', async () => {
+  await fetch('/api/replay/skip');
+  toast('⏭ skipping to the end of this match…');
+});
 es.addEventListener('status', e => {
   const d = JSON.parse(e.data);
   $('mode').innerHTML = `<span class="dot" style="background:${/stopped|finished/.test(d.note) ? 'var(--warning)' : 'var(--good)'}"></span>${d.note || d.mode}`;
@@ -917,11 +936,17 @@ async function postConfig(cfg, msgEl) {
   if (r.ok && r.trading) tradingHeader(r.trading);
   return r;
 }
-$('st-save').addEventListener('click', () => postConfig({
-  sizeUsd: Number($('st-size').value) || undefined,
-  maxExposureUsd: Number($('st-exposure').value) || undefined,
-  maxLossUsd: Number($('st-loss').value) || undefined
-}, $('st-keymsg')));
+$('st-save').addEventListener('click', async () => {
+  const r = await postConfig({
+    sizeUsd: Number($('st-size').value) || undefined,
+    maxExposureUsd: Number($('st-exposure').value) || undefined,
+    maxLossUsd: Number($('st-loss').value) || undefined
+  }, $('st-limitsmsg'));
+  if (r.ok && r.trading) {
+    $('st-limitsmsg').textContent =
+      `✓ saved — $${r.trading.sizeUsd}/fade · max open $${r.trading.maxExposureUsd} · kill switch $${r.trading.maxLossUsd}`;
+  }
+});
 $('st-arm').addEventListener('click', async () => {
   const key = $('st-key').value.trim();
   if (!key) { $('st-keymsg').textContent = '✕ enter your account private key (not the seed phrase)'; $('st-keymsg').style.color = 'var(--critical)'; return; }
@@ -941,7 +966,10 @@ $('mm-start').addEventListener('click', async () => {
     if ($(id).value !== '') q.set(p, $(id).value);
   }
   const r = await fetch('/api/mm/start?' + q).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
-  $('mm-msg').textContent = r.ok ? `✓ quoting ${r.mm.quotes.bid ?? '—'} / ${r.mm.quotes.ask ?? '—'} (${r.mm.mode})` : '✕ ' + r.error;
+  $('mm-msg').textContent = !r.ok ? '✕ ' + r.error
+    : r.mm.quotes.bid == null && r.mm.quotes.ask == null
+      ? `✓ started (${r.mm.mode}) — waiting for the first prices, quotes appear within ~3s…`
+      : `✓ quoting ${r.mm.quotes.bid ?? '—'} / ${r.mm.quotes.ask ?? '—'} (${r.mm.mode})`;
   $('mm-msg').style.color = r.ok ? 'var(--good)' : 'var(--critical)';
 });
 $('mm-stop').addEventListener('click', async () => {
@@ -992,7 +1020,7 @@ let isLive = false;
 function renderModeToggle() {
   $('golive').textContent = isLive ? '⏪ Replay mode' : '🔴 Go live';
   $('golive').title = isLive ? 'back to historical replays' : 'open the next scheduled match, live';
-  for (const id of ['pick', 'go', 'stop']) $(id).hidden = isLive;
+  for (const id of ['pick', 'go', 'stop', 'faster', 'skipend']) $(id).hidden = isLive;
 }
 async function ensureSchedule() {
   if (liveMatch) return;

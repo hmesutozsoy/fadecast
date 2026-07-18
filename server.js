@@ -22,6 +22,7 @@ import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
 import { Crowd } from './lib/crowd.js';
 import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket, upcomingMatches } from './lib/polymarket.js';
+import { fetchTapes, loadTapes } from './lib/tapes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -361,6 +362,18 @@ const server = http.createServer(async (req, res) => {
       });
     return;
   }
+  if (url.pathname === '/api/replay/speed' && MODE === 'replay') {
+    if (currentSrc && typeof currentSrc.speed === 'number') {
+      currentSrc.speed = Math.min(currentSrc.speed * Number(url.searchParams.get('mult') || 2), 2000);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, speed: currentSrc?.speed ?? null }));
+  }
+  if (url.pathname === '/api/replay/skip' && MODE === 'replay') {
+    if (currentSrc && typeof currentSrc.speed === 'number') currentSrc.speed = 1e9; // drain to the end
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, skipping: !!currentSrc }));
+  }
   if (url.pathname === '/api/replay/stop' && MODE === 'replay') {
     if (currentSrc) currentSrc.stop();
     broadcast('status', { mode: MODE, note: 'replay stopped' });
@@ -412,6 +425,13 @@ server.listen(PORT, async () => {
   console.log(`[fadecast] http://localhost:${PORT}  mode=${MODE} publish=${PUBLISH}`);
   console.log(`[fadecast] agent wallet: ${publisher.address}`);
   if (PUBLISH) await publisher.ensureFunds().then(b => console.log(`[fadecast] devnet balance: ${b / 1e9} SOL`));
+  // self-populate real 2026 knockout tapes when the host can reach Polymarket
+  // (fire-and-forget: replays fall back to 2022 modeled matches until then)
+  if (loadTapes().length < 6) {
+    fetchTapes({ log: m => console.log(`[fadecast] ${m}`) })
+      .then(t => { if (t.length) console.log(`[fadecast] ${t.length} real 2026 tapes ready — next replay uses them`); })
+      .catch(e => console.log(`[fadecast] tape fetch failed: ${e.message}`));
+  }
   (MODE === 'live' || MODE === 'record' ? startLive()
     : MODE === 'follow' ? startFollow()
     : MODE === 'poly' ? startPoly({ slug: process.env.POLY_SLUG, question: process.env.POLY_QUESTION || '' })
