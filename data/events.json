@@ -1,0 +1,45 @@
+{
+  "note": "REAL match events for the WC2026 knockout tapes — goals/cards/penalties at their actual minutes, plus real post-match quotes. Every item links to the source coverage and an X search so viewers can see the real posts. Nothing here is invented.",
+  "events": {
+    "fifwc-fra-mar-2026-07-09": [
+      { "min": 25, "type": "post", "text": "Penalty to France — Mazraoui brings down Mbappé in the box", "x": "Mbappe penalty Morocco", "source": "https://www.cnn.com/2026/07/09/sport/live-news/france-morocco-world-cup-score" },
+      { "min": 28, "type": "post", "text": "SAVED! Bounou keeps out Mbappé's penalty — still 0-0", "x": "Bounou save Mbappe", "source": "https://www.cnn.com/2026/07/09/sport/live-news/france-morocco-world-cup-score" },
+      { "min": 60, "type": "goal", "team": "home", "player": "Kylian Mbappé", "text": "GOAL France — Mbappé makes up for the penalty miss, 1-0", "x": "Mbappe goal Morocco", "source": "https://www.espn.com/soccer/match/_/gameId/760510/morocco-france" },
+      { "min": 66, "type": "goal", "team": "home", "player": "Ousmane Dembélé", "text": "GOAL France — Dembélé curls one past Bounou off Mbappé's lay-off, 2-0", "x": "Dembele goal Morocco", "source": "https://www.espn.com/soccer/match/_/gameId/760510/morocco-france" },
+      { "min": 94, "type": "post", "text": "FT France 2-0 Morocco. 21-4 on shots — Les Bleus into the semis", "x": "France Morocco full time", "source": "https://www.espn.com/soccer/match/_/gameId/760510/morocco-france" }
+    ],
+    "fifwc-esp-bel-2026-07-10": [
+      { "min": 30, "type": "goal", "team": "home", "player": "Fabián Ruiz", "text": "GOAL Spain — Fabián Ruiz opens it, 1-0", "x": "Fabian Ruiz goal Belgium", "source": "https://www.espn.com/soccer/match/_/gameId/760511/belgium-spain" },
+      { "min": 41, "type": "goal", "team": "away", "player": "Charles De Ketelaere", "text": "GOAL Belgium — De Ketelaere levels before the break, 1-1", "x": "De Ketelaere goal Spain", "source": "https://www.espn.com/soccer/match/_/gameId/760511/belgium-spain" },
+      { "min": 88, "type": "goal", "team": "home", "player": "Mikel Merino", "text": "GOAL Spain — Merino, on the pitch barely two minutes, turns in the rebound after Lammens spills Cubarsí's shot. 2-1", "x": "Merino goal Belgium", "source": "https://www.cnn.com/2026/07/10/sport/live-news/spain-belgium-world-cup-score" },
+      { "min": 96, "type": "post", "text": "FT Spain 2-1 Belgium — a sub's late winner breaks Belgian hearts", "x": "Spain Belgium full time", "source": "https://www.cnn.com/2026/07/10/sport/live-news/spain-belgium-world-cup-score" }
+    ],
+    "fifwc-nor-eng-2026-07-11": [
+      { "min": 36, "type": "goal", "team": "home", "player": "Andreas Schjelderup", "text": "GOAL Norway — Schjelderup stuns England, 1-0", "x": "Schjelderup goal England", "source": "https://www.espn.com/soccer/match/_/gameId/760512/england-norway" },
+      { "min": 46, "type": "goal", "team": "away", "player": "Jude Bellingham", "text": "GOAL England — Bellingham levels in first-half stoppage time, 1-1", "x": "Bellingham goal Norway", "source": "https://www.espn.com/soccer/match/_/gameId/760512/england-norway" },
+      { "min": 74, "type": "post", "text": "VAR drama — a Norway goal is wiped out after Haaland shoves his marker before the corner", "x": "Haaland VAR Norway England", "source": "https://www.aljazeera.com/sports/liveblog/2026/7/11/england-vs-norway-live-fifa-world-cup-2026-quarterfinal" },
+      { "min": 93, "type": "goal", "team": "away", "player": "Jude Bellingham", "text": "GOAL England — Bellingham again, third minute of extra time. 2-1", "x": "Bellingham extra time Norway", "source": "https://www.aljazeera.com/sports/liveblog/2026/7/11/england-vs-norway-live-fifa-world-cup-2026-quarterfinal" },
+      { "min": 121, "type": "post", "text": "FT (aet) Norway 1-2 England — Bellingham's brace sends the Three Lions through", "x": "England Norway full time", "source": "https://www.olympics.com/en/news/fifa-world-cup-2026-norway-vs-england-quarter-final-score-lineups-live-updates" }
+    ],
+    "fifwc-arg-che-2026-07-11": [
+      { "min": 10, "type": "goal", "team": "home", "player": "Alexis Mac Allister", "text": "GOAL Argentina — Mac Allister inside ten minutes, 1-0", "x": "Mac Allister goal Switzerland", "source": "https://www.espn.com/soccer/match/_/gameId/760513/switzerland-argentina" },
+      { "min": 67, "type": "goal", "team": "away", "player": "Dan Ndoye", "text": "GOAL Switzerland — Ndoye's neat finish levels it, 1-1", "x": "Ndoye goal Argentina", "source": "https://www.espn.com/soccer/match/_/gameId/760513/switzerland-argentina" },
+      { "min": 73, "type": "post", "text": "RED CARD — Embolo off for a second yellow. Momentum swings back to Argentina", "x": "Embolo red card Argentina", "source": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/argentina-switzerland-match-report-highlights" },
+      { "min": 112, "type": "goal", "team": "home", "player": "Julián Álvarez", "text": "GOAL Argentina — Álvarez rockets one into the far top corner, 2-1 in extra time", "x": "Alvarez goal Switzerland", "source": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/argentina-switzerland-match-report-highlights" },
+      { "min": 121, "type": "goal", "team": "home", "player": "Lautaro Martínez", "text": "GOAL Argentina — Lautaro seals it at the death, 3-1", "x": "Lautaro goal Switzerland", "source": "https://www.espn.com/soccer/match/_/gameId/760513/switzerland-argentina" }
+    ],
+    "fifwc-fra-esp-2026-07-14": [
+      { "min": 20, "type": "post", "text": "Penalty to Spain — Digne fouls Yamal in the box", "x": "Yamal penalty France", "source": "https://www.npr.org/2026/07/14/nx-s1-5893692/2026-world-cup-fifa-spain-france-semifinal" },
+      { "min": 22, "type": "goal", "team": "away", "player": "Mikel Oyarzabal", "text": "GOAL Spain — Oyarzabal buries the penalty, 1-0", "x": "Oyarzabal penalty France", "source": "https://www.espn.com/soccer/match/_/gameId/760514/spain-france" },
+      { "min": 58, "type": "goal", "team": "away", "player": "Pedro Porro", "text": "GOAL Spain — Porro's give-and-go with Olmo, side-footed past Maignan. 2-0", "x": "Porro goal France", "source": "https://www.espn.com/soccer/match/_/gameId/760514/spain-france" },
+      { "min": 95, "type": "post", "text": "FT France 0-2 Spain — La Roja outplay the champions-elect and march into the final", "x": "France Spain full time", "source": "https://www.npr.org/2026/07/14/nx-s1-5893692/2026-world-cup-fifa-spain-france-semifinal" }
+    ],
+    "fifwc-eng-arg-2026-07-15": [
+      { "min": 55, "type": "goal", "team": "home", "player": "Anthony Gordon", "text": "GOAL England — Gordon taps home Rogers' cross in transition, 1-0", "x": "Anthony Gordon goal Argentina", "source": "https://www.espn.com/soccer/match/_/gameId/760515/argentina-england" },
+      { "min": 85, "type": "goal", "team": "away", "player": "Enzo Fernández", "text": "GOAL Argentina — Enzo from range, Messi with the assist. 1-1", "x": "Enzo Fernandez goal England", "source": "https://www.nbcsports.com/soccer/news/lionel-messi-leads-argentinas-unbelievable-late-comeback-as-england-collapse-in-world-cup-semifinal" },
+      { "min": 92, "type": "goal", "team": "away", "player": "Lautaro Martínez", "text": "GOAL Argentina — Lautaro heads in Messi's second assist of the night. 2-1, stoppage time", "x": "Lautaro header England semifinal", "source": "https://www.nbcsports.com/soccer/news/lionel-messi-leads-argentinas-unbelievable-late-comeback-as-england-collapse-in-world-cup-semifinal" },
+      { "min": 96, "type": "post", "handle": "Harry Kane (post-match)", "text": "\"I'm gutted for the team, the staff, the fans.\"", "x": "Harry Kane gutted Argentina", "source": "https://sports.yahoo.com/soccer/live/england-vs-argentina-world-cup-2026-score-result-schedule-live-updates-150000908.html" },
+      { "min": 98, "type": "post", "handle": "Lionel Messi (post-match)", "text": "\"The fans wanted this victory more than any other.\"", "x": "Messi fans victory England", "source": "https://www.espn.com/soccer/story/_/id/49371461/lionel-messi-win-england-meant-most-fans" }
+    ]
+  }
+}

@@ -42,7 +42,11 @@ crowd.on('scored', scored => {
   broadcast('crowd', { scored, leaderboard: crowd.leaderboard() });
   // the tweets go on-chain too: hash + verdict per scored take, so the
   // "Most Fadeable" leaderboard is provable, not just the bot's record
-  for (const t of scored) publisher.publishTake(t);
+  for (const t of scored) {
+    publisher.publishTake(t).then(rec => {
+      if (rec?.sig) broadcast('takechain', { id: t.id, sig: rec.sig, explorer: rec.explorer });
+    }).catch(() => {});
+  }
 });
 const sseClients = new Set();
 const punditLog = [];
@@ -52,6 +56,15 @@ let strategy = {};   // user overrides of the engine's fade rules
 let polyExec = null; // Polymarket executor, active only in poly mode
 let polyMarket = null, polySrc = null;
 let mm = null;       // market maker, optional, poly mode only
+
+// tracked X accounts (persisted): whose posts the live timeline follows
+const HANDLES_PATH = path.join(__dirname, 'data/handles.json');
+const trackedHandles = new Set((() => {
+  try { return JSON.parse(fs.readFileSync(HANDLES_PATH, 'utf8')).handles || []; } catch { return []; }
+})());
+const saveHandles = () => {
+  try { fs.writeFileSync(HANDLES_PATH, JSON.stringify({ handles: [...trackedHandles] }, null, 1)); } catch {}
+};
 let upcomingCache = { ts: 0, data: null };
 let replayIdx = -1;      // attract-mode rotation cursor
 let rotationTimer = null; // only ever ONE pending rotation
@@ -103,13 +116,17 @@ function wireEngine() {
 }
 wireEngine();
 
-// ambient timeline chatter: a take every 10-20s (randomized) while a replay runs
+// ambient timeline chatter: a take every 10-20s (randomized) — ONLY on the
+// modeled 2022 fallback replays. Real tapes have their real timeline, and live
+// sessions show only real ingested posts (tracked handles / POST /api/takes).
 (function ambientLoop() {
   setTimeout(() => {
-    if (MODE === 'replay' && currentSrc && !currentSrc.stopped && engine.series.size) {
-      const all = [...engine.series.values()];
-      const s = all[Math.floor(Math.random() * all.length)];
-      crowd.ambient({ fixtureId: s.fixtureId, meta: s.meta });
+    if (MODE === 'replay' && !polySrc && currentSrc && !currentSrc.stopped && engine.series.size) {
+      const all = [...engine.series.values()].filter(s => !s.meta?.tape);
+      if (all.length) {
+        const s = all[Math.floor(Math.random() * all.length)];
+        crowd.ambient({ fixtureId: s.fixtureId, meta: s.meta });
+      }
     }
     ambientLoop();
   }, 10_000 + Math.random() * 10_000);
@@ -145,8 +162,14 @@ async function startReplay({ only = null, speed = SPEED } = {}) {
   src.on('score', g => {
     broadcast('score', g);
     commentate(pundit.goal(g));
-    setTimeout(() => crowd.reactToGoal(g), 400); // the timeline piles in right after
+    // real tapes carry their own real timeline (data/events.json); the
+    // synthetic personas only narrate the modeled 2022 fallback replays
+    if (!g.meta?.tape) setTimeout(() => crowd.reactToGoal(g), 400);
   });
+  src.on('post', p => crowd.add({
+    handle: p.handle, text: p.text, fixtureId: p.fixtureId,
+    stance: 'chatter', ts: p.ts, source: p.source, xq: p.xq
+  }));
   let tickCount = 0;
   src.on('tick', () => tickCount++);
   src.on('end', () => {
@@ -194,6 +217,10 @@ async function startPoly({ slug, question }) {
   if (mm) { mm.stop(); mm = null; }
   wireEngine();
   punditLog.length = 0;
+  // live is the real product: no replay takes, no demo leaderboard carryover —
+  // the timeline shows only real ingested posts (tracked handles → /api/takes)
+  crowd.takes.length = 0;
+  crowd.records.clear();
   const src = new PolymarketSource(market);
   currentSrc = src;
   polyMarket = market; polySrc = src;
@@ -259,6 +286,48 @@ const server = http.createServer(async (req, res) => {
     }));
   }
   // live intake: a scout agent (or curl) posts real takes from accounts you follow
+  // tracked X accounts: the watchlist for live-mode ingestion. Adding a handle
+  // here is the contract — a scout (Apify actor, X API poller, or manual
+  // curl) POSTs that account's posts to /api/takes and they show + get scored.
+  if (url.pathname === '/api/handles') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => {
+        try {
+          const { add, remove } = JSON.parse(body || '{}');
+          const clean = h => String(h || '').trim().replace(/^@+/, '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 15);
+          if (add && clean(add)) trackedHandles.add('@' + clean(add));
+          if (remove) trackedHandles.delete(remove);
+          saveHandles();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, handles: [...trackedHandles] }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ handles: [...trackedHandles] }));
+  }
+  // live chart backfill: the market's real price history, Polymarket-style
+  if (url.pathname === '/api/poly/history') {
+    if (!polyMarket) { res.writeHead(400); return res.end('{"ok":false,"error":"not live"}'); }
+    const now = Math.floor(Date.now() / 1000);
+    fetch(`https://clob.polymarket.com/prices-history?market=${polyMarket.yes}&startTs=${now - 6 * 3600}&endTs=${now}&fidelity=5`)
+      .then(r => r.json())
+      .then(d => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ok: true, fixtureId: polyMarket.fixtureId, label: polyMarket.label,
+          history: (d.history || []).map(p => [p.t, +(+p.p).toFixed(4)])
+        }));
+      })
+      .catch(e => { res.writeHead(502); res.end(JSON.stringify({ ok: false, error: e.message })); });
+    return;
+  }
   if (url.pathname === '/api/takes' && req.method === 'POST') {
     let body = '';
     req.on('data', c => body += c);

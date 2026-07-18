@@ -114,6 +114,20 @@
   .tk .v { float: right; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
   .tk .v.wrong { color: var(--good); border-color: var(--good); }   /* wrong take = we won */
   .tk .v.right { color: var(--critical); border-color: var(--critical); }
+  .tk .lnks { margin-left: 8px; white-space: nowrap; }
+  .tk .lnks a { font-size: 10.5px; color: var(--muted); margin-right: 8px; text-decoration: none; }
+  .tk .lnks a:hover { color: var(--series); }
+  /* tracked X accounts strip above the timeline */
+  #tracked { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 8px; }
+  #tracked .th { font-size: 11px; padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px;
+    color: var(--ink-2); text-decoration: none; }
+  #tracked .th b { cursor: pointer; color: var(--muted); margin-left: 5px; font-weight: 400; }
+  #tracked .th:hover { border-color: var(--series); color: var(--series); }
+  #tracked input { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; color: var(--ink);
+    font-size: 11px; padding: 2px 10px; width: 110px; }
+  #tracked button { font-size: 11px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: none; color: var(--ink-2); cursor: pointer; }
+  #tracked button:hover { border-color: var(--series); color: var(--series); }
   .fb { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--grid); font-size: 13px; font-variant-numeric: tabular-nums; }
   .fb:last-child { border-bottom: none; }
   .fb .h { color: var(--ink); font-weight: 600; }
@@ -249,9 +263,7 @@
     <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
     <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
     <button id="setupbtn" class="chip" style="cursor:pointer" title="Polymarket wallet, trading limits, market making">💠 Polymarket wallet</button>
-    <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
     <button id="connect" class="chip" style="cursor:pointer" title="connect Phantom — your identity and on-chain record">◎ Solana wallet</button>
-    <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
   </div>
 </header>
 <p class="sub">Live prices in → panic detected → trade it on <b>Polymarket</b> (fade or ride) → every call notarized on <b>Solana</b> <em>before</em> it resolves.</p>
@@ -275,6 +287,10 @@
     <h2>The Timeline 🗣 <span style="text-transform:none;letter-spacing:0">— takes from accounts you follow</span>
       <a id="xlink" href="https://x.com/search?q=World%20Cup&f=live" target="_blank"
          style="float:right;font-size:11px;text-transform:none;letter-spacing:0">see the posts on 𝕏 ↗</a></h2>
+    <div id="tracked">
+      <input id="th-input" placeholder="@handle" maxlength="16" title="an X account to track">
+      <button id="th-add" title="add this account to the watchlist — its posts get scored and go on-chain">＋ track</button>
+    </div>
     <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
   </section>
   <section>
@@ -560,8 +576,6 @@ setInterval(refreshProof, 30_000);
 
 es.addEventListener('hello', e => {
   const d = JSON.parse(e.data);
-  $('mode').innerHTML = `<span class="dot"></span>${d.mode} mode`;
-  $('wallet').textContent = `agent: ${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`;
   agentWallet = d.wallet;
   refreshProof();
 });
@@ -635,8 +649,21 @@ function takeLine(t) {
   if (tlEmpty) { box.innerHTML = ''; tlEmpty = false; }
   const el = document.createElement('div');
   el.className = 'tk';
-  el.innerHTML = `<span class="v"></span><span class="h">${t.handle}</span><span class="t"></span>`;
+  el.innerHTML = `<span class="v"></span><span class="h">${t.handle}</span><span class="t"></span><span class="lnks"></span>`;
   el.querySelector('.t').textContent = t.text;
+  const lnks = el.querySelector('.lnks');
+  if (t.xq) {
+    const a = document.createElement('a');
+    a.href = `https://x.com/search?q=${encodeURIComponent(t.xq)}&f=live`;
+    a.target = '_blank'; a.textContent = '𝕏 ↗'; a.title = 'see the real posts about this moment';
+    lnks.appendChild(a);
+  }
+  if (t.source) {
+    const a = document.createElement('a');
+    a.href = t.source; a.target = '_blank'; a.textContent = 'source ↗'; a.title = 'match coverage';
+    lnks.appendChild(a);
+  }
+  if (t.chain?.explorer) lnks.appendChild(chainLink(t.chain.explorer));
   const v = el.querySelector('.v');
   if (t.verdict) { v.textContent = t.verdict === 'wrong' ? '💀 was wrong' : '😤 was right'; v.className = `v ${t.verdict}`; }
   else v.remove();
@@ -665,6 +692,52 @@ es.addEventListener('take', e => {
       }
     }
   }
+});
+// ---- tracked X accounts: the live-mode watchlist ----
+function renderHandles(handles) {
+  const box = $('tracked');
+  box.querySelectorAll('.th').forEach(el => el.remove());
+  const input = $('th-input');
+  for (const h of handles) {
+    const a = document.createElement('a');
+    a.className = 'th';
+    a.href = `https://x.com/${h.slice(1)}`;
+    a.target = '_blank';
+    a.title = `open ${h} on X · ✕ to untrack`;
+    a.textContent = h;
+    const x = document.createElement('b');
+    x.textContent = '✕';
+    x.addEventListener('click', async ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      const r = await fetch('/api/handles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ remove: h }) }).then(x => x.json());
+      if (r.ok) renderHandles(r.handles);
+    });
+    a.appendChild(x);
+    box.insertBefore(a, input);
+  }
+}
+$('th-add').addEventListener('click', async () => {
+  const h = $('th-input').value.trim();
+  if (!h) return;
+  const r = await fetch('/api/handles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: h }) })
+    .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  if (r.ok) { renderHandles(r.handles); $('th-input').value = ''; toast(`＋ tracking @${h.replace(/^@+/, '')} — its posts land here and get scored on-chain`); }
+  else toast('✕ ' + (r.error || 'could not add'));
+});
+$('th-input').addEventListener('keydown', e => { if (e.key === 'Enter') $('th-add').click(); });
+fetch('/api/handles').then(r => r.json()).then(d => renderHandles(d.handles || [])).catch(() => {});
+
+function chainLink(explorer) {
+  const a = document.createElement('a');
+  a.href = explorer; a.target = '_blank'; a.textContent = '⛓ tx ↗';
+  a.title = 'this take is committed on Solana — hash + verdict';
+  return a;
+}
+// a scored take landed on-chain: attach the receipt link to its timeline row
+es.addEventListener('takechain', e => {
+  const d = JSON.parse(e.data);
+  const el = takeEls.get(d.id);
+  if (el && d.explorer) el.querySelector('.lnks')?.appendChild(chainLink(d.explorer));
 });
 es.addEventListener('crowd', e => {
   const d = JSON.parse(e.data);
@@ -856,10 +929,7 @@ $('skipend').addEventListener('click', async () => {
   await fetch('/api/replay/skip');
   toast('⏭ skipping to the end of this match…');
 });
-es.addEventListener('status', e => {
-  const d = JSON.parse(e.data);
-  $('mode').innerHTML = `<span class="dot" style="background:${/stopped|finished/.test(d.note) ? 'var(--warning)' : 'var(--good)'}"></span>${d.note || d.mode}`;
-});
+// mode chip removed from the header — status notes are cosmetic, drop them
 
 // ---- upcoming fixtures (live via TxLINE once activated) ----
 // the real schedule, fetched from the venue — every chip is one click from live
@@ -1157,6 +1227,20 @@ fetch('/api/state').then(r => r.json()).then(st => {
   mmLine(st.mm);
   isLive = !!st.trading;
   renderModeToggle();
+  if (isLive) {
+    if (tlEmpty) $('timeline').innerHTML =
+      '<div class="empty">Live mode shows only real posts — track accounts above; a scout POSTs their takes to /api/takes and every scored one lands on-chain.</div>';
+    // Polymarket-style chart: backfill the live card with the market's real
+    // price history so it isn't a flat line right after kickoff
+    fetch('/api/poly/history').then(r => r.json()).then(h => {
+      if (!h.ok || !h.history.length) return;
+      const card = matchCard(h.fixtureId, h.label);
+      const firstLive = card.series.length ? card.series[0][0] : Infinity;
+      card.series = [...h.history.filter(p => p[0] < firstLive), ...card.series];
+      if (card.series.length) card.price.textContent = `P(home) ${card.series[card.series.length - 1][1].toFixed(3)}`;
+      draw(card);
+    }).catch(() => {});
+  }
 });
 </script>
 </body>

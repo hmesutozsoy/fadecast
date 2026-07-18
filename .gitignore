@@ -4,3 +4,4 @@ data/credentials.json
 data/recording.jsonl
 data/outbox.jsonl
 .DS_Store
+data/handles.json
