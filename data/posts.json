@@ -1,0 +1,40 @@
+{
+  "note": "REAL X posts making calls on the WC2026 knockout matches — found via web search, each verified by loading the actual status page. Verdicts follow from the real results. Texts are short excerpts; the url is the receipt.",
+  "posts": [
+    {
+      "fixtureId": "fifwc-fra-esp-2026-07-14",
+      "handle": "@NeilMac555", "followers": "27.8K",
+      "url": "https://x.com/NeilMac555/status/2077079361421799686",
+      "text": "Spain vs France — France to advance/qualify. Reasoning below 🧵",
+      "verdict": "wrong", "note": "France lost 0-2"
+    },
+    {
+      "fixtureId": "fifwc-eng-arg-2026-07-15",
+      "handle": "@ActionNetworkHQ", "followers": "252K",
+      "url": "https://x.com/ActionNetworkHQ/status/2077394243417436617",
+      "text": "SEMIFINAL BEST BET: England to qualify — \"England have more depth\"",
+      "verdict": "wrong", "note": "Argentina won 2-1"
+    },
+    {
+      "fixtureId": "fifwc-eng-arg-2026-07-15",
+      "handle": "@Polymarket", "followers": "1.7M",
+      "url": "https://x.com/Polymarket/status/2076777036828291267",
+      "text": "55% chance England advances to the World Cup final.",
+      "verdict": "wrong", "note": "posted two days out; England went home"
+    },
+    {
+      "fixtureId": "fifwc-eng-arg-2026-07-15",
+      "handle": "@Polymarket", "followers": "1.7M",
+      "url": "https://x.com/Polymarket/status/2077101233035186673",
+      "text": "54% chance Argentina defeats England.",
+      "verdict": "right", "note": "Argentina won 2-1"
+    },
+    {
+      "fixtureId": "fifwc-arg-che-2026-07-11",
+      "handle": "@chnmharish", "followers": "12.9K",
+      "url": "https://x.com/chnmharish/status/2076101736289222698",
+      "text": "Argentina 63–37 — a narrow 1-0 or 2-1 more likely, extra time realistic",
+      "verdict": "right", "note": "Argentina won 3-1 aet"
+    }
+  ]
+}

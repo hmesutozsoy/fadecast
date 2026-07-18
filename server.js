@@ -168,12 +168,14 @@ async function startReplay({ only = null, speed = SPEED } = {}) {
   });
   src.on('post', p => crowd.add({
     handle: p.handle, text: p.text, fixtureId: p.fixtureId,
-    stance: 'chatter', ts: p.ts, source: p.source, xq: p.xq
+    stance: p.stance || 'chatter', ts: p.ts, source: p.source, xq: p.xq,
+    url: p.url, followers: p.followers, preset: p.preset
   }));
   let tickCount = 0;
   src.on('tick', () => tickCount++);
   src.on('end', () => {
     console.log(`[fadecast] ${new Date().toISOString().slice(11, 19)} replay ended (${only || 'all'}, ${tickCount} ticks)`);
+    crowd.settlePreset(); // real calls get their verdicts, the chain gets the receipts
     broadcast('status', { mode: MODE, note: 'replay finished — next match starting…' });
     // attract mode: the site never goes dead — rotate to the next real match
     clearTimeout(rotationTimer);

@@ -186,6 +186,7 @@
     background: var(--surface); border: 1px solid var(--critical); color: var(--ink);
     padding: 10px 20px; border-radius: 10px; font-size: 13px; max-width: 82vw;
     box-shadow: 0 10px 34px rgba(0,0,0,.6); display: none; text-align: center;
+    pointer-events: none;   /* never block the buttons underneath */
   }
 
   /* ---- quick bet ---- */
@@ -274,8 +275,6 @@
   <div class="tile"><div class="k">Signals fired</div><div class="v" id="t-signals">0</div></div>
   <div class="tile"><div class="k">Win rate</div><div class="v" id="t-winrate">—</div></div>
   <div class="tile"><div class="k">Cumulative P&amp;L</div><div class="v" id="t-pnl">0.0<small> pts</small></div></div>
-  <div class="tile"><div class="k">On-chain commits</div><div class="v" id="t-chain">0</div></div>
-  <div class="tile"><div class="k">You vs the bot</div><div class="v" id="t-duel">0 <small>–</small> 0</div></div>
 </div>
 
 <div id="cards"></div>
@@ -294,8 +293,8 @@
     <div class="pundit-box" id="timeline"><div class="empty">Quiet before the goal…</div></div>
   </section>
   <section>
-    <h2>Most fadeable 🎯 <span style="text-transform:none;letter-spacing:0">— who to always bet against</span></h2>
-    <div class="pundit-box" id="fadeboard" style="max-height:230px"><div class="empty">No receipts yet.</div></div>
+    <h2>Leaderboard 🏆 <span style="text-transform:none;letter-spacing:0">— who actually gets it right (and who to fade)</span></h2>
+    <div class="pundit-box" id="fadeboard" style="max-height:230px"><div class="empty">No settled calls yet — accuracy shows up once predictions resolve.</div></div>
     <h2 style="margin-top:16px">Proof ⛓ <span style="text-transform:none;letter-spacing:0">— read live from Solana, not from our server</span></h2>
     <div class="pundit-box" id="proof" style="max-height:230px"><div class="empty">Nothing on-chain yet.</div></div>
     <h2 style="margin-top:16px">Trading 💱 <span id="tmode" style="text-transform:none;letter-spacing:0">— replay mode: no venue</span></h2>
@@ -397,22 +396,12 @@
 
 <div id="toast"></div>
 
-<div id="betcard">
-  <div class="bhead">🎟 Quick bet <span id="bank">100 pts</span></div>
-  <div class="bmatch" id="bet-label">waiting for a market…</div>
-  <div class="bbtns" id="bet-btns">
-    <button id="bet-home">—</button>
-    <button id="bet-away">—</button>
-  </div>
-  <div class="bpos" id="bet-pos"></div>
-</div>
-
 <script>
 const $ = id => document.getElementById(id);
 function toast(msg, color = 'var(--critical)') {
   const t = $('toast');
   t.style.borderColor = color; t.textContent = msg; t.style.display = 'block';
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 6000);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 1600);
 }
 
 // ---- identity: connect a wallet and your record follows it ----
@@ -533,7 +522,6 @@ function setPnl(p) {
 
 // ---- live wiring ----
 const es = new EventSource('/api/events');
-let chainCount = 0;
 let agentWallet = null;
 
 // the proof panel reads the record straight from Solana — trust the chain,
@@ -564,15 +552,7 @@ async function refreshProof() {
 }
 setInterval(refreshProof, 30_000);
 
-// the commits tile opens the wallet's full record on Solana Explorer
-{
-  const tile = $('t-chain').parentElement;
-  tile.style.cursor = 'pointer';
-  tile.title = 'view the full record on Solana Explorer';
-  tile.addEventListener('click', () => {
-    if (agentWallet) window.open(`https://explorer.solana.com/address/${agentWallet}?cluster=devnet`, '_blank');
-  });
-}
+// commits tile removed — the Proof panel is the on-chain window now
 
 es.addEventListener('hello', e => {
   const d = JSON.parse(e.data);
@@ -585,15 +565,14 @@ es.addEventListener('tick', e => {
   if (t.label && m.label !== t.label) {
     m.label = t.label;
     m.el.querySelector('h3').textContent = t.label;
-    $('xlink').href = `https://x.com/search?q=${encodeURIComponent(t.label)}&f=live`;
+    // search just the team names — "France Morocco", not "France vs. Morocco — Quarterfinal"
+    const teams = t.label.split('—')[0].replace(/\bvs\.?\b/i, ' ').replace(/\s+/g, ' ').trim();
+    $('xlink').href = `https://x.com/search?q=${encodeURIComponent(teams)}&f=live`;
   }
   m.series.push([t.ts, t.price]);
   if (m.series.length > 400) m.series.shift();
   m.price.textContent = `P(home) ${t.price.toFixed(3)}`;
   draw(m);
-  curPrice.set(t.fixtureId, t.price);
-  if (!featured) featured = t.fixtureId;
-  if (t.fixtureId === featured || (pos && t.fixtureId === pos.fixtureId)) betRender();
 });
 es.addEventListener('signal', e => {
   const s = JSON.parse(e.data);
@@ -607,10 +586,7 @@ es.addEventListener('published', e => {
   const d = JSON.parse(e.data);
   const rec = signals.get(d.id);
   if (rec) { rec.sig.chain = d.chain; upsertSignal(rec.sig); }
-  if (d.chain?.sig) {
-    $('t-chain').textContent = ++chainCount;
-    setTimeout(refreshProof, 2500); // give the RPC a beat to index it
-  }
+  if (d.chain?.sig) setTimeout(refreshProof, 2500); // give the RPC a beat to index it
 });
 es.addEventListener('entered', e => upsertSignal(JSON.parse(e.data)));
 es.addEventListener('cancelled', e => {
@@ -652,6 +628,17 @@ function takeLine(t) {
   el.innerHTML = `<span class="v"></span><span class="h">${t.handle}</span><span class="t"></span><span class="lnks"></span>`;
   el.querySelector('.t').textContent = t.text;
   const lnks = el.querySelector('.lnks');
+  if (t.url) {
+    // a real X post: the handle links straight to the receipt
+    const h = el.querySelector('.h');
+    h.innerHTML = `<a href="${t.url}" target="_blank" title="open the real post on X">${t.handle}</a>` +
+      (t.followers ? ` <small style="color:var(--muted);font-weight:400">${t.followers}</small>` : '');
+  }
+  if (t.url) {
+    const a = document.createElement('a');
+    a.href = t.url; a.target = '_blank'; a.textContent = 'post ↗'; a.title = 'the actual post on X';
+    lnks.appendChild(a);
+  }
   if (t.xq) {
     const a = document.createElement('a');
     a.href = `https://x.com/search?q=${encodeURIComponent(t.xq)}&f=live`;
@@ -675,10 +662,13 @@ function takeLine(t) {
 function fadeboard(rows) {
   const box = $('fadeboard');
   if (!rows.length) return;
-  box.innerHTML = rows.map(r => `
+  // accuracy leaderboard: best callers on top, the fade candidates sink
+  const ranked = rows.map(r => ({ ...r, acc: 100 - r.fadeRate, right: r.takes - r.wrong }))
+    .sort((a, b) => b.acc - a.acc || b.right - a.right);
+  box.innerHTML = ranked.map(r => `
     <div class="fb"><span class="h">${r.handle}</span>
-      <span class="bar"><span class="fill" style="width:${r.fadeRate}%"></span></span>
-      <span class="pct">${r.fadeRate}% fadeable <small>(${r.wrong}/${r.takes})</small></span></div>`).join('');
+      <span class="bar"><span class="fill" style="width:${r.acc}%"></span></span>
+      <span class="pct">${r.acc}% right <small>(${r.right}/${r.takes})</small>${r.acc < 50 ? ' 💀 fade' : ''}</span></div>`).join('');
 }
 es.addEventListener('take', e => {
   const t = JSON.parse(e.data);
@@ -779,13 +769,13 @@ const picks = new Map();          // signalId -> 'fade' | 'ride'
 const duel = { you: 0, bot: 0 };
 const openCards = new Map();      // signalId -> card element
 
+// duel tile removed from the UI — the record still accrues in localStorage
 function duelRender() {
-  $('t-duel').innerHTML = `${duel.you} <small>–</small> ${duel.bot}`;
   localStorage.setItem(k('fc_duel'), JSON.stringify(duel));
 }
-{ // restore the (anonymous) duel record on load; wallet connect swaps it
+{
   const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
-  if (d) { duel.you = d.you || 0; duel.bot = d.bot || 0; duelRender(); }
+  if (d) { duel.you = d.you || 0; duel.bot = d.bot || 0; }
 }
 
 function spawnCard(s) {
@@ -1135,77 +1125,11 @@ function tradingHeader(t) {
 }
 es.addEventListener('trade', e => { tradeLine(JSON.parse(e.data)); fetch('/api/state').then(r => r.json()).then(st => tradingHeader(st.trading)); });
 
-// ---- quick bet: virtual bankroll, client-side, zero wallet friction ----
-let bank = Number(localStorage.getItem('fc_bank') || 100);
-let pos = JSON.parse(localStorage.getItem('fc_pos') || 'null');
-let featured = null;                 // first market seen this session
-const curPrice = new Map();
-const STAKE = 10;
-
-function bankSave() {
-  localStorage.setItem(k('fc_bank'), bank);
-  localStorage.setItem(k('fc_pos'), JSON.stringify(pos));
-  $('bank').textContent = `${bank.toFixed(1)} pts`;
-}
+// quick-bet card removed — the swipe cards are the participation loop
 function loadWalletState() {
-  bank = Number(localStorage.getItem(k('fc_bank')) ?? 100);
-  pos = JSON.parse(localStorage.getItem(k('fc_pos')) || 'null');
   const d = JSON.parse(localStorage.getItem(k('fc_duel')) || 'null');
   duel.you = d?.you || 0; duel.bot = d?.bot || 0;
-  bankSave(); betRender(); duelRender();
 }
-function posValue() {
-  const p = curPrice.get(pos.fixtureId);
-  if (p == null) return null;
-  const val = pos.side === 'home' ? p : 1 - p;
-  return pos.stake * (val - pos.entry) / pos.entry;
-}
-function betRender() {
-  const homeBtn = $('bet-home'), awayBtn = $('bet-away');
-  if (pos) {
-    const pnl = posValue();
-    $('bet-label').textContent = pos.label;
-    homeBtn.disabled = awayBtn.disabled = true;
-    homeBtn.textContent = 'position'; awayBtn.textContent = 'open';
-    $('bet-pos').innerHTML = pnl == null
-      ? `${pos.stake} pts on <b>${pos.side.toUpperCase()}</b> @ ${pos.entry.toFixed(2)} · waiting for prices…`
-      : `${pos.stake} pts on <b>${pos.side.toUpperCase()}</b> @ ${pos.entry.toFixed(2)} ·
-         <span class="${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)} pts</span>
-         <button id="cashout">💰 Cash out</button>`;
-    const co = $('cashout');
-    if (co) co.addEventListener('click', () => {
-      bank += pos.stake + (posValue() ?? 0);
-      pos = null; bankSave(); betRender();
-    });
-    return;
-  }
-  $('bet-pos').innerHTML = '';
-  const p = featured ? curPrice.get(featured) : null;
-  if (p == null) {
-    $('bet-label').textContent = 'waiting for a market…';
-    homeBtn.disabled = awayBtn.disabled = true;
-    homeBtn.textContent = '—'; awayBtn.textContent = '—';
-    return;
-  }
-  const m = matches.get(featured);
-  $('bet-label').textContent = `${m?.label || featured} — live`;
-  const ok = bank >= STAKE;
-  homeBtn.disabled = awayBtn.disabled = !ok;
-  homeBtn.textContent = `Home @ ${p.toFixed(2)}`;
-  awayBtn.textContent = `Away @ ${(1 - p).toFixed(2)}`;
-}
-function placeBet(side) {
-  const p = curPrice.get(featured);
-  if (pos || p == null || bank < STAKE) return;
-  const entry = side === 'home' ? p : 1 - p;
-  if (entry < 0.03) return;          // nothing to win at the boundary
-  bank -= STAKE;
-  pos = { fixtureId: featured, side, entry, stake: STAKE, label: matches.get(featured)?.label || featured };
-  bankSave(); betRender();
-}
-$('bet-home').addEventListener('click', () => placeBet('home'));
-$('bet-away').addEventListener('click', () => placeBet('away'));
-bankSave();
 
 // initial state (page reload mid-run)
 fetch('/api/state').then(r => r.json()).then(st => {
@@ -1220,8 +1144,6 @@ fetch('/api/state').then(r => r.json()).then(st => {
   ((st.crowd || {}).takes || []).forEach(takeLine);
   fadeboard(((st.crowd || {}).leaderboard) || []);
   fillRules(st.strategy);
-  $('t-chain').textContent = st.published || 0;
-  chainCount = st.published || 0;
   if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
   if (st.trading) { tradingHeader(st.trading); (st.trading.orders || []).forEach(tradeLine); }
   mmLine(st.mm);
