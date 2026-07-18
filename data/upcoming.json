@@ -1,20 +1,22 @@
 {
-  "note": "Upcoming FIFA World Cup 2026 fixtures — these go live through the TxLINE odds/scores streams (npm run live) once the API token is activated.",
+  "note": "Fallback snapshot only — /api/upcoming fetches the live schedule from Polymarket (series soccer-fifwc) and uses this file when that fetch fails.",
+  "source": "fallback",
   "matches": [
     {
-      "fixtureId": "wc2026-sf-fra-esp",
+      "fixtureId": "fifwc-fra-eng-2026-07-18",
+      "polymarketSlug": "fifwc-fra-eng-2026-07-18",
       "home": "France",
-      "away": "Spain",
-      "stage": "Semifinal · 19:00 UTC",
-      "kickoff": "2026-07-14",
-      "polymarketSlug": "fifwc-fra-esp-2026-07-14"
+      "away": "England",
+      "stage": "Third place",
+      "kickoff": "2026-07-18T21:00:00Z"
     },
     {
-      "fixtureId": "wc2026-final",
-      "home": "TBD",
-      "away": "TBD",
+      "fixtureId": "fifwc-esp-arg-2026-07-19",
+      "polymarketSlug": "fifwc-esp-arg-2026-07-19",
+      "home": "Spain",
+      "away": "Argentina",
       "stage": "Final — MetLife Stadium",
-      "kickoff": "2026-07-19"
+      "kickoff": "2026-07-19T19:00:00Z"
     }
   ]
 }

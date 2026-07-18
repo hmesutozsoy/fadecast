@@ -55,6 +55,8 @@
     padding: 8px 18px; color: var(--ink-2);
   }
   .up b { color: var(--ink); font-size: 16px; }
+  .up.clickable { cursor: pointer; transition: border-color .2s, transform .2s; }
+  .up.clickable:hover { border-color: var(--series); transform: translateY(-1px); }
   .up .when { color: var(--warning); font-variant-numeric: tabular-nums; }
   .up .stage { color: var(--muted); font-size: 13px; }
 
@@ -824,18 +826,35 @@ es.addEventListener('status', e => {
 });
 
 // ---- upcoming fixtures (live via TxLINE once activated) ----
+// the real schedule, fetched from the venue — every chip is one click from live
 fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
-  liveSlug = (matches || []).find(m => m.polymarketSlug)?.polymarketSlug || liveSlug;
+  matches = matches || [];
+  liveSlug = matches.find(m => m.polymarketSlug)?.polymarketSlug || liveSlug;
+  const dt = iso => new Date(iso.includes('T') ? iso : iso + 'T19:00:00Z');
   const when = iso => {
-    const ms = new Date(iso + 'T19:00:00Z') - Date.now();
-    if (ms < 0) return 'now';
+    const ms = dt(iso) - Date.now();
+    if (ms < 0) return '🔴 LIVE now';
     if (ms < 86400e3) return `in ${Math.max(1, Math.round(ms / 3600e3))}h 🔥`;
     return `in ${Math.ceil(ms / 86400e3)}d`;
   };
-  $('upcoming').innerHTML = (matches || []).map(m => `
-    <span class="up">🔜 <b>${m.home} vs ${m.away}</b>
-      <span class="when">${new Date(m.kickoff + 'T19:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${when(m.kickoff)}</span>
-      <span class="stage">${m.stage} · live</span></span>`).join('');
+  $('upcoming').innerHTML = matches.map((m, i) => `
+    <span class="up${m.polymarketSlug ? ' clickable' : ''}" data-i="${i}" title="${m.polymarketSlug ? 'click to open this market live' : ''}">
+      ${m.live ? '🔴' : '🔜'} <b>${m.home} vs ${m.away}</b>
+      <span class="when">${dt(m.kickoff).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${when(m.kickoff)}</span>
+      <span class="stage">${m.stage} · ${m.polymarketSlug ? '▶ watch' : 'live'}</span></span>`).join('');
+  $('upcoming').querySelectorAll('.up.clickable').forEach(el => el.addEventListener('click', async () => {
+    const m = matches[Number(el.dataset.i)];
+    const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(m.polymarketSlug)}&question=${encodeURIComponent(m.home || '')}`).then(x => x.json());
+    if (r.ok) location.replace(location.pathname + '?s=' + Date.now());
+    else alert('Polymarket: ' + r.error);
+  }));
+});
+
+// shared instance = watch party: when a new session starts, everyone's view follows
+const loadedAt = Date.now();
+es.addEventListener('session', () => {
+  if (Date.now() - loadedAt < 5000) return;   // ignore the echo right after our own load
+  location.replace(location.pathname + '?s=' + Date.now());
 });
 
 // ---- your wallet (Phantom, devnet) ----

@@ -21,7 +21,7 @@ import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
 import { Crowd } from './lib/crowd.js';
-import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket } from './lib/polymarket.js';
+import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket, upcomingMatches } from './lib/polymarket.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.MODE || 'replay';
@@ -51,11 +51,20 @@ let strategy = {};   // user overrides of the engine's fade rules
 let polyExec = null; // Polymarket executor, active only in poly mode
 let polyMarket = null, polySrc = null;
 let mm = null;       // market maker, optional, poly mode only
+let upcomingCache = { ts: 0, data: null };
+let replayIdx = -1;      // attract-mode rotation cursor
+let rotationTimer = null; // only ever ONE pending rotation
 
 function broadcast(event, data) {
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const res of sseClients) res.write(frame);
+  for (const res of sseClients) {
+    try { res.write(frame); } catch { sseClients.delete(res); }
+  }
 }
+
+// a public product logs and survives; it doesn't die on a dropped socket
+process.on('uncaughtException', e => console.error('[fadecast] uncaught:', e.message));
+process.on('unhandledRejection', e => console.error('[fadecast] unhandled rejection:', e?.message || e));
 
 async function commentate(promise) {
   const line = await promise;
@@ -120,6 +129,7 @@ setInterval(async () => {
 // ---- data sources -----------------------------------------------------------
 
 async function startReplay({ only = null, speed = SPEED } = {}) {
+  clearTimeout(rotationTimer);
   if (currentSrc) currentSrc.stop();
   if (mm) { mm.stop(); mm = null; }
   polyExec = null;            // leaving the venue: replay is simulation again
@@ -136,9 +146,24 @@ async function startReplay({ only = null, speed = SPEED } = {}) {
     commentate(pundit.goal(g));
     setTimeout(() => crowd.reactToGoal(g), 400); // the timeline piles in right after
   });
-  src.on('end', () => broadcast('status', { mode: MODE, note: 'replay finished' }));
+  let tickCount = 0;
+  src.on('tick', () => tickCount++);
+  src.on('end', () => {
+    console.log(`[fadecast] ${new Date().toISOString().slice(11, 19)} replay ended (${only || 'all'}, ${tickCount} ticks)`);
+    broadcast('status', { mode: MODE, note: 'replay finished — next match starting…' });
+    // attract mode: the site never goes dead — rotate to the next real match
+    clearTimeout(rotationTimer);
+    rotationTimer = setTimeout(() => {
+      if (currentSrc !== src || MODE !== 'replay') return; // someone took over
+      const ms = listMatches();
+      replayIdx = (replayIdx + 1) % ms.length;
+      startReplay({ only: ms[replayIdx].fixtureId, speed });
+      broadcast('session', { note: 'new replay session' });
+    }, 8000);
+  });
   src.start();
-  console.log(`[fadecast] replay (${recording ? 'recorded ticks' : only || 'all matches'}, ${speed}x)`);
+  broadcast('session', { note: 'replay session' });
+  console.log(`[fadecast] ${new Date().toISOString().slice(11, 19)} replay (${recording ? 'recorded ticks' : only || 'all matches'}, ${speed}x)`);
 }
 
 async function startLive() {
@@ -163,6 +188,7 @@ async function startLive() {
 // live only when the operator sets POLY_PRIVATE_KEY and POLY_TRADE=live)
 async function startPoly({ slug, question }) {
   const market = await findMarket(slug, question);
+  clearTimeout(rotationTimer);   // a live session outranks the attract loop
   if (currentSrc) currentSrc.stop();
   if (mm) { mm.stop(); mm = null; }
   wireEngine();
@@ -181,6 +207,7 @@ async function startPoly({ slug, question }) {
   src.start();
   console.log(`[fadecast] POLYMARKET LIVE: ${market.label} (trade mode: ${polyExec.mode})`);
   broadcast('status', { mode: 'polymarket', note: `live: ${market.label} · ${polyExec.mode}` });
+  broadcast('session', { note: 'live session' });
   return market;
 }
 
@@ -262,7 +289,13 @@ const server = http.createServer(async (req, res) => {
     if (!slug) { res.writeHead(400); return res.end('{"ok":false,"error":"slug required"}'); }
     startPoly({ slug, question })
       .then(m => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, market: m.label, mode: polyExec.mode })); })
-      .catch(e => { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: e.message })); });
+      .catch(e => {
+        const msg = /fetch failed/i.test(e.message)
+          ? 'Polymarket is unreachable from this server\'s network (some ISPs DNS-block it — try a VPN, or use the hosted instance)'
+          : e.message;
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: msg }));
+      });
     return;
   }
   // runtime trading config. Limits are open; the PRIVATE KEY is accepted only
@@ -313,7 +346,20 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/api/upcoming') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(fs.readFileSync(path.join(__dirname, 'data/upcoming.json')));
+    const now = Date.now();
+    if (upcomingCache.data && now - upcomingCache.ts < 300_000) {
+      return res.end(JSON.stringify(upcomingCache.data));
+    }
+    upcomingMatches()
+      .then(matches => {
+        upcomingCache = { ts: now, data: { source: 'polymarket', matches } };
+        res.end(JSON.stringify(upcomingCache.data));
+      })
+      .catch(() => {
+        // schedule fetch failed: fall back to the checked-in snapshot
+        res.end(fs.readFileSync(path.join(__dirname, 'data/upcoming.json')));
+      });
+    return;
   }
   if (url.pathname === '/api/replay/stop' && MODE === 'replay') {
     if (currentSrc) currentSrc.stop();
@@ -348,6 +394,8 @@ const server = http.createServer(async (req, res) => {
     res.write(`event: hello\ndata: ${JSON.stringify({ mode: MODE, wallet: publisher.address })}\n\n`);
     sseClients.add(res);
     req.on('close', () => sseClients.delete(res));
+    res.on('error', () => sseClients.delete(res));   // mass reloads drop sockets mid-write
+    req.on('error', () => sseClients.delete(res));
     return;
   }
   // static
