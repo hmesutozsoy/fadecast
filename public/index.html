@@ -167,6 +167,13 @@
   #setup .msg { margin-top: 8px; font-size: 12px; min-height: 16px; }
   #setup .warn { font-size: 11px; color: var(--warning); margin-top: 8px; line-height: 1.5; }
 
+  #toast {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 60;
+    background: var(--surface); border: 1px solid var(--critical); color: var(--ink);
+    padding: 10px 20px; border-radius: 10px; font-size: 13px; max-width: 82vw;
+    box-shadow: 0 10px 34px rgba(0,0,0,.6); display: none; text-align: center;
+  }
+
   /* ---- quick bet ---- */
   #betcard {
     position: fixed; right: 24px; bottom: 24px; width: 260px; z-index: 19;
@@ -238,14 +245,14 @@
     <button id="go" class="chip" style="cursor:pointer">Start</button>
     <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
     <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
-    <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="trade the live Polymarket market">🔴 Go live</button>
-    <button id="setupbtn" class="chip" style="cursor:pointer" title="trading limits, key arming, market making">💱 Trading setup</button>
+    <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
+    <button id="setupbtn" class="chip" style="cursor:pointer" title="Polymarket wallet, trading limits, market making">💠 Polymarket wallet</button>
     <span class="chip" id="mode"><span class="dot"></span>connecting…</span>
-    <button id="connect" class="chip" style="cursor:pointer" title="connect your Solana wallet (devnet)">👛 Connect wallet</button>
+    <button id="connect" class="chip" style="cursor:pointer" title="connect Phantom — your identity and on-chain record">◎ Solana wallet</button>
     <span class="chip" id="wallet" title="agent wallet (devnet)">agent: —</span>
   </div>
 </header>
-<p class="sub">TxLINE StablePrice odds → overshoot detection → fade signal committed to Solana devnet <em>before</em> resolution.</p>
+<p class="sub">Live prices in → panic detected → trade it on <b>Polymarket</b> (fade or ride) → every call notarized on <b>Solana</b> <em>before</em> it resolves.</p>
 
 <div class="upcoming" id="upcoming"></div>
 
@@ -313,7 +320,10 @@
 </div>
 
 <div id="setup" hidden>
-  <div class="rhead">💱 Trading setup</div>
+  <div class="rhead">💠 Polymarket wallet & trading</div>
+  <div class="rnote" style="margin:0 0 4px">Two chains, two jobs: trades execute on <b>Polymarket</b> (Polygon,
+    real USDC). <b>Solana</b> is the notary — every call is timestamped there <i>before</i> it resolves, so the
+    record can't be faked. They never touch each other.</div>
 
   <div class="sechead">Allocation</div>
   <div class="rgrid">
@@ -323,7 +333,7 @@
   </div>
   <div class="rbtns"><button id="st-save" class="primary">Save limits</button></div>
 
-  <div class="sechead">Arm live trading (your own instance only)</div>
+  <div class="sechead">Connect your Polymarket wallet (your own instance only)</div>
   <label>Polymarket account private key<input id="st-key" type="password" placeholder="0x… (never the seed phrase)" autocomplete="off"></label>
   <div class="rgrid" style="margin-top:10px">
     <label>Account type
@@ -359,6 +369,8 @@
   <div class="msg" id="mm-msg"></div>
 </div>
 
+<div id="toast"></div>
+
 <div id="betcard">
   <div class="bhead">🎟 Quick bet <span id="bank">100 pts</span></div>
   <div class="bmatch" id="bet-label">waiting for a market…</div>
@@ -371,6 +383,11 @@
 
 <script>
 const $ = id => document.getElementById(id);
+function toast(msg, color = 'var(--critical)') {
+  const t = $('toast');
+  t.style.borderColor = color; t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 6000);
+}
 
 // ---- identity: connect a wallet and your record follows it ----
 let userWallet = null, userProvider = null;
@@ -829,7 +846,8 @@ es.addEventListener('status', e => {
 // the real schedule, fetched from the venue — every chip is one click from live
 fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
   matches = matches || [];
-  liveSlug = matches.find(m => m.polymarketSlug)?.polymarketSlug || liveSlug;
+  const first = matches.find(m => m.polymarketSlug);
+  if (first) { liveSlug = first.polymarketSlug; liveMatch = { slug: first.polymarketSlug, home: first.home, label: `${first.home} vs ${first.away}` }; }
   const dt = iso => new Date(iso.includes('T') ? iso : iso + 'T19:00:00Z');
   const when = iso => {
     const ms = dt(iso) - Date.now();
@@ -844,9 +862,9 @@ fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
       <span class="stage">${m.stage} · ${m.polymarketSlug ? '▶ watch' : 'live'}</span></span>`).join('');
   $('upcoming').querySelectorAll('.up.clickable').forEach(el => el.addEventListener('click', async () => {
     const m = matches[Number(el.dataset.i)];
-    const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(m.polymarketSlug)}&question=${encodeURIComponent(m.home || '')}`).then(x => x.json());
+    const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(m.polymarketSlug)}&question=${encodeURIComponent(m.home || '')}`).then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
     if (r.ok) location.replace(location.pathname + '?s=' + Date.now());
-    else alert('Polymarket: ' + r.error);
+    else toast(r.error);
   }));
 });
 
@@ -967,16 +985,35 @@ $('r-reset').addEventListener('click', async () => {
   location.replace(location.pathname + '?s=' + Date.now());
 });
 
-// ---- go live: route the engine to a real Polymarket market ----
-let liveSlug = null; // prefilled from upcoming.json
+// ---- go live: one-click toggle between replays and the live venue ----
+let liveSlug = null;   // kept for compatibility (prompt default no longer used)
+let liveMatch = null;  // soonest scheduled match {slug, home, label}
+let isLive = false;
+function renderModeToggle() {
+  $('golive').textContent = isLive ? '⏪ Replay mode' : '🔴 Go live';
+  $('golive').title = isLive ? 'back to historical replays' : 'open the next scheduled match, live';
+  for (const id of ['pick', 'go', 'stop']) $(id).hidden = isLive;
+}
+async function ensureSchedule() {
+  if (liveMatch) return;
+  const d = await fetch('/api/upcoming').then(r => r.json()).catch(() => ({ matches: [] }));
+  const m = (d.matches || []).find(x => x.polymarketSlug);
+  if (m) liveMatch = { slug: m.polymarketSlug, home: m.home, label: `${m.home} vs ${m.away}` };
+}
 $('golive').addEventListener('click', async () => {
-  const slug = prompt('Polymarket event slug', liveSlug || 'fifwc-fra-esp-2026-07-14');
-  if (!slug) return;
-  const question = prompt('Which market? (word from the question)', 'France') || '';
-  const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(slug)}&question=${encodeURIComponent(question)}`).then(x => x.json());
-  if (!r.ok) { alert('Polymarket error: ' + r.error); return; }
+  if (isLive) {
+    await fetch('/api/replay?match=all');
+  } else {
+    $('golive').textContent = '⏳ connecting…';
+    await ensureSchedule();
+    if (!liveMatch) { renderModeToggle(); toast('No scheduled Polymarket market found right now.'); return; }
+    const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
+      .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+    if (!r.ok) { renderModeToggle(); toast(r.error); return; }
+  }
   location.replace(location.pathname + '?s=' + Date.now());
 });
+renderModeToggle();
 
 let tradesEmpty = true;
 function tradeLine(o) {
@@ -1090,6 +1127,8 @@ fetch('/api/state').then(r => r.json()).then(st => {
   if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
   if (st.trading) { tradingHeader(st.trading); (st.trading.orders || []).forEach(tradeLine); }
   mmLine(st.mm);
+  isLive = !!st.trading;
+  renderModeToggle();
 });
 </script>
 </body>
