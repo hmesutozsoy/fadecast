@@ -1076,6 +1076,11 @@ fetch('/api/state').then(r => r.json()).then(st => {
   mmLine(st.mm);
   isLive = !!st.trading;
   renderModeToggle();
+  if (st.publishing === false) {
+    // this instance isn't notarizing: say so instead of a silently empty panel
+    $('proof').innerHTML = '<div class="empty">⛓ On-chain publishing is OFF on this instance — ' +
+      'the operator needs WALLET_SECRET + PUBLISH=1 in the environment (see README: Deploying).</div>';
+  }
   if (isLive) {
     if (tlEmpty) $('timeline').innerHTML =
       '<div class="empty">Live mode shows only real posts — track accounts above; a scout POSTs their takes to /api/takes and every scored one lands on-chain.</div>';

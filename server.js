@@ -281,6 +281,7 @@ const server = http.createServer(async (req, res) => {
       mode: MODE,
       wallet: publisher.address,
       published: publisher.published.length,
+      publishing: PUBLISH,   // false → this instance is not committing on-chain
       strategy: engine.p,
       trading: polyExec ? polyExec.state() : null,
       mm: mm ? mm.state() : null,
