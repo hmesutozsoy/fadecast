@@ -57,6 +57,7 @@
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
   .seg button { font: inherit; font-size: 12px; padding: 3px 14px; background: none; border: none; color: var(--ink-2); cursor: pointer; }
   .seg button.on { background: var(--series); color: #fff; font-weight: 600; }
+  .seg #seg-live.on { background: var(--critical); }
   .seg button:not(.on):hover { color: var(--series); }
   .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
   select.chip, button.chip { font: inherit; font-size: 12px; appearance: none; -webkit-appearance: none; }
@@ -284,7 +285,7 @@
     <h1>FADE<b>CAST</b></h1>
   </a>
   <div class="chips">
-    <button id="connect" class="chip" style="cursor:pointer" title="connect Phantom — your identity and on-chain record">◎ Solana wallet</button>
+    <button id="gear" class="chip" style="cursor:pointer" title="strategy, allocation, wallet, market maker">Settings</button>
   </div>
 </header>
 <nav class="ctrl">
@@ -295,7 +296,6 @@
   <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
   <button id="faster" class="chip" style="cursor:pointer" title="double the replay speed">⏩</button>
   <button id="skipend" class="chip" style="cursor:pointer" title="jump to the end of this replay">⏭</button>
-  <button id="gear" class="chip" style="cursor:pointer" title="strategy, allocation, wallet, market maker">Settings</button>
   <span class="seg" id="modeseg" title="switch between historical replays and the live Polymarket market">
     <button id="seg-replay" class="on">Replay</button><button id="seg-live">Live</button>
   </span>
@@ -908,30 +908,7 @@ es.addEventListener('session', () => {
   location.replace(location.pathname + '?s=' + Date.now());
 });
 
-// ---- your wallet (Phantom, devnet) ----
-$('connect').addEventListener('click', async () => {
-  const btn = $('connect');
-  const provider = window.solana;
-  if (!provider || !provider.isPhantom) {
-    btn.textContent = '👛 Phantom not found — get it ↗';
-    window.open('https://phantom.app', '_blank');
-    return;
-  }
-  try {
-    const { publicKey } = await provider.connect();
-    const key = publicKey.toString();
-    userWallet = key; userProvider = provider;   // signed in: your record follows this address
-    loadWalletState();
-    btn.textContent = `👛 ${key.slice(0, 4)}…${key.slice(-4)} · …`;
-    const r = await fetch('https://api.devnet.solana.com', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [key] })
-    }).then(x => x.json());
-    btn.textContent = `👛 ${key.slice(0, 4)}…${key.slice(-4)} · ${((r.result?.value || 0) / 1e9).toFixed(2)} SOL (devnet)`;
-  } catch {
-    btn.textContent = '👛 Connect wallet';
-  }
-});
+// Phantom connect removed: identity plays no role since swipe cards left
 
 // ---- fade rules: customize when the bot fades ----
 $('gear').addEventListener('click', () => { $('setup').hidden = !$('setup').hidden; });
@@ -1070,7 +1047,6 @@ function renderModeToggle() {
   for (const id of ['pick', 'go', 'stop', 'faster', 'skipend']) $(id).hidden = isLive;
   // one settings modal, two faces: strategy-only in replay, everything live
   $('setuphead').textContent = isLive ? 'Trading settings' : 'Fade settings';
-  $('gear').textContent = isLive ? 'Trading settings' : 'Settings';
   $('r-apply').textContent = isLive ? 'Apply live' : 'Apply & replay';
   document.querySelectorAll('#setup .live-only').forEach(el => el.hidden = !isLive);
 }
