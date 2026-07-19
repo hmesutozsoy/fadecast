@@ -11,7 +11,8 @@
 
 import anchor from '@coral-xyz/anchor';
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync
+  ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountIdempotentInstruction
 } from '@solana/spl-token';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import nacl from 'tweetnacl';
@@ -70,6 +71,8 @@ async function main() {
   const tokenTreasuryVault = getAssociatedTokenAddressSync(CONFIG.txlTokenMint, tokenTreasuryPda, true, TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
   const userTokenAccount = getAssociatedTokenAddressSync(CONFIG.txlTokenMint, payer.publicKey, false, TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
 
+  // the free tier moves 0 TXL, but the program still requires the user's TXL
+  // token account to exist — create it idempotently first
   const txSig = await program.methods
     .subscribe(SERVICE_LEVEL_ID, DURATION_WEEKS)
     .accounts({
@@ -83,12 +86,21 @@ async function main() {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId
     })
+    .preInstructions([
+      createAssociatedTokenAccountIdempotentInstruction(
+        payer.publicKey, userTokenAccount, payer.publicKey, CONFIG.txlTokenMint,
+        TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    ])
     .rpc();
   console.log('subscribe tx:', txSig);
 
-  // 2. guest JWT
+  // 2. guest JWT (the endpoint may answer JSON {token} or the raw token text)
   const authResp = await fetch(`${CONFIG.apiOrigin}/auth/guest/start`, { method: 'POST' });
-  const jwt = (await authResp.json()).token;
+  const rawAuth = await authResp.text();
+  let jwt;
+  try { const j = JSON.parse(rawAuth); jwt = j.token || j.jwt || j; } catch { jwt = rawAuth.trim(); }
+  if (!jwt || typeof jwt !== 'string') throw new Error(`guest auth gave no token: ${rawAuth.slice(0, 120)}`);
 
   // 3. sign activation message with the subscribing wallet
   const message = new TextEncoder().encode(`${txSig}:${SELECTED_LEAGUES.join(',')}:${jwt}`);
@@ -101,8 +113,10 @@ async function main() {
     body: JSON.stringify({ txSig, walletSignature, leagues: SELECTED_LEAGUES })
   });
   if (!actResp.ok) throw new Error(`activate ${actResp.status}: ${await actResp.text()}`);
-  const body = await actResp.json();
-  const apiToken = body.token || body;
+  const rawAct = await actResp.text();
+  let apiToken;
+  try { const j = JSON.parse(rawAct); apiToken = j.token || j.apiToken || j; } catch { apiToken = rawAct.trim(); }
+  if (!apiToken || typeof apiToken !== 'string') throw new Error(`activation gave no token: ${rawAct.slice(0, 120)}`);
 
   const credsPath = path.join(__dirname, '../data/credentials.json');
   fs.writeFileSync(credsPath, JSON.stringify({ jwt, apiToken, network: NETWORK, txSig }, null, 2));
