@@ -11,8 +11,8 @@
 <style>
   /* Polymarket-inspired dark navy palette */
   :root {
-    --page: #141a21;
-    --surface: #1d2530;
+    --page: #0f1419;      /* Polymarket's near-black slate */
+    --surface: #1b222b;
     --ink: #ffffff;
     --ink-2: #c4ccd8;
     --muted: #7c8796;
@@ -37,9 +37,17 @@
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--baseline); border-radius: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
-  h1 { font-size: 24px; letter-spacing: 0.05em; }
-  h1 b { color: var(--series); text-shadow: 0 0 24px rgba(57,135,229,0.55); }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
+  .brand .logo { display: block; border-radius: 8px; box-shadow: 0 0 22px rgba(74,158,255,0.35); }
+  h1 { font-size: 22px; letter-spacing: 0.05em; }
+  h1 b { color: var(--series); }
+  /* Polymarket-style control strip under the top bar */
+  nav.ctrl {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 10px 0; margin-bottom: 16px;
+  }
   .tagline { color: var(--ink-2); }
   .chips { margin-left: auto; display: flex; gap: 8px; align-items: center; }
   .chip {
@@ -262,22 +270,30 @@
 </head>
 <body>
 <header>
-  <h1>FADE<b>CAST</b></h1>
+  <a class="brand" id="homelink" title="FadeCast — back to the homepage">
+    <svg class="logo" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+      <rect x="0" y="0" width="32" height="32" rx="8" fill="var(--series)"/>
+      <polyline points="5,10 12,10 16,22 20,14 27,14" fill="none" stroke="#fff"
+                stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>FADE<b>CAST</b></h1>
+  </a>
   <div class="chips">
-    <select id="pick" class="chip" title="replay a real World Cup match">
-      <option value="all">▶ Replay: all matches</option>
-    </select>
-    <button id="go" class="chip" style="cursor:pointer">Start</button>
-    <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
-    <button id="faster" class="chip" style="cursor:pointer" title="double the replay speed">⏩</button>
-    <button id="skipend" class="chip" style="cursor:pointer" title="jump to the end of this replay">⏭</button>
-    <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
-    <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
     <button id="setupbtn" class="chip" style="cursor:pointer" title="Polymarket wallet, trading limits, market making">💠 Polymarket wallet</button>
     <button id="connect" class="chip" style="cursor:pointer" title="connect Phantom — your identity and on-chain record">◎ Solana wallet</button>
   </div>
 </header>
-<p class="sub">Live prices in → panic detected → trade it on <b>Polymarket</b> (fade or ride) → every call notarized on <b>Solana</b> <em>before</em> it resolves.</p>
+<nav class="ctrl">
+  <select id="pick" class="chip" title="replay a real World Cup match">
+    <option value="all">▶ Replay: all matches</option>
+  </select>
+  <button id="go" class="chip" style="cursor:pointer">Start</button>
+  <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
+  <button id="faster" class="chip" style="cursor:pointer" title="double the replay speed">⏩</button>
+  <button id="skipend" class="chip" style="cursor:pointer" title="jump to the end of this replay">⏭</button>
+  <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot fades">⚙ Fade rules</button>
+  <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
+</nav>
 
 <div class="upcoming" id="upcoming"></div>
 
@@ -407,6 +423,8 @@
 
 <script>
 const $ = id => document.getElementById(id);
+// the logo is the home button: hard refresh back to the homepage
+$('homelink').addEventListener('click', () => location.replace(location.pathname + '?s=' + Date.now()));
 function toast(msg, color = 'var(--critical)') {
   const t = $('toast');
   t.style.borderColor = color; t.textContent = msg; t.style.display = 'block';
@@ -578,7 +596,7 @@ async function refreshProof() {
       try {
         const m = JSON.parse(raw);
         label = m.kind === 'take'
-          ? `take · ${m.handle} was ${m.verdict || m.stance}`
+          ? `🐦 tweet · ${m.handle} — ${m.verdict === 'wrong' ? '💀 was wrong' : m.verdict === 'right' ? '😤 was right' : m.stance}`
           : `fade call · ${m.fixtureId || ''} ${m.side ? '(' + m.side.split(' ')[0] + ')' : ''}`;
       } catch {}
       const t = x.blockTime ? new Date(x.blockTime * 1000).toLocaleTimeString() : '';
@@ -695,7 +713,7 @@ function takeLine(t) {
   box.prepend(el);
   takeEls.set(t.id, el);
   if (t.stance === 'panic' && !t.verdict) latestTake.set(t.fixtureId, t);
-  while (box.children.length > 25) box.lastChild.remove();
+  while (box.children.length > 40) box.lastChild.remove();
 }
 function fadeboard(rows) {
   const box = $('fadeboard');

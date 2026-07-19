@@ -44,7 +44,10 @@ crowd.on('scored', scored => {
   // "Most Fadeable" leaderboard is provable, not just the bot's record
   for (const t of scored) {
     publisher.publishTake(t).then(rec => {
-      if (rec?.sig) broadcast('takechain', { id: t.id, sig: rec.sig, explorer: rec.explorer });
+      if (rec?.sig) {
+        t.chain = { sig: rec.sig, explorer: rec.explorer }; // survives reloads via /api/state
+        broadcast('takechain', { id: t.id, sig: rec.sig, explorer: rec.explorer });
+      }
     }).catch(() => {});
   }
 });
