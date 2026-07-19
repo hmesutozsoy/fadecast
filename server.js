@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OvershootEngine } from './lib/overshoot.js';
-import { ReplaySource, listMatches } from './lib/replay.js';
+import { ReplaySource, listMatches, loadPosts } from './lib/replay.js';
 import { TxLineClient } from './lib/txline.js';
 import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
@@ -37,7 +37,20 @@ const publisher = new SignalPublisher({
 const pundit = new Pundit();
 const outbox = new SocialOutbox({ file: path.join(__dirname, 'data/outbox.jsonl') });
 const crowd = new Crowd();
-crowd.on('take', t => broadcast('take', t));
+crowd.on('take', t => {
+  broadcast('take', t);
+  // an OPEN call (no verdict yet, e.g. tomorrow's final): commit the hash
+  // on-chain NOW — the timestamp must predate the result to mean anything
+  if (t.stance === 'call' && t.url && !t.preset && !t.verdict && !t.chain && !t._committing) {
+    t._committing = true;
+    publisher.publishTake(t).then(rec => {
+      if (rec?.sig) {
+        t.chain = { sig: rec.sig, explorer: rec.explorer };
+        broadcast('takechain', { id: t.id, sig: rec.sig, explorer: rec.explorer });
+      }
+    }).catch(() => {});
+  }
+});
 crowd.on('scored', scored => {
   broadcast('crowd', { scored, leaderboard: crowd.leaderboard() });
   // the tweets go on-chain too: hash + verdict per scored take, so the
@@ -238,6 +251,14 @@ async function startPoly({ slug, question }) {
   src.on('tick', t => engine.addTick(t));
   src.on('error', e => console.warn('[poly]', e.message));
   src.start();
+  // real pre-match calls for THIS market drop into the live timeline and get
+  // committed on-chain immediately (see crowd.on('take')) — before kickoff
+  for (const p of loadPosts().filter(p => p.fixtureId === slug && !p.verdict)) {
+    crowd.add({
+      handle: p.handle, text: p.text, fixtureId: market.fixtureId,
+      stance: 'call', url: p.url, followers: p.followers
+    });
+  }
   console.log(`[fadecast] POLYMARKET LIVE: ${market.label} (trade mode: ${polyExec.mode})`);
   broadcast('status', { mode: 'polymarket', note: `live: ${market.label} · ${polyExec.mode}` });
   broadcast('session', { note: 'live session' });

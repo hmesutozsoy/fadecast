@@ -70,6 +70,36 @@
       "url": "https://x.com/ActionNetworkHQ/status/2077394243417436617",
       "text": "SEMIFINAL BEST BET: England to qualify — \"England have more depth\"",
       "verdict": "wrong", "note": "Argentina won 2-1"
+    },
+
+    { "_comment": "— THE FINAL: pending calls, committed on-chain BEFORE kickoff; add verdicts after the match —" },
+    {
+      "fixtureId": "fifwc-esp-arg-2026-07-19",
+      "handle": "@actuallyimthe", "followers": "21.8K",
+      "url": "https://x.com/actuallyimthe/status/1414366007888650241",
+      "text": "\"Argentina just beat Spain at the 2026 World Cup final, 3-2.\" — posted July 11, 2021, five years early",
+      "verdict": null, "note": "the prophecy tweet, 285K likes"
+    },
+    {
+      "fixtureId": "fifwc-esp-arg-2026-07-19",
+      "handle": "@Stake", "followers": "561.5K",
+      "url": "https://x.com/Stake/status/2078348767976362426",
+      "text": "Drake has gone big on Argentina — a $5.1M payout awaits if they beat Spain in regular time",
+      "verdict": null, "note": "the Drake curse, on the record (8.4M views)"
+    },
+    {
+      "fixtureId": "fifwc-esp-arg-2026-07-19",
+      "handle": "@tosinmm_", "followers": "5,072",
+      "url": "https://x.com/tosinmm_/status/2078617403404034524",
+      "text": "Spain Argentina is going to be nastiest 1-0 btw",
+      "verdict": null, "note": "359K views the night before the final"
+    },
+    {
+      "fixtureId": "fifwc-esp-arg-2026-07-19",
+      "handle": "@_mossypebble", "followers": null,
+      "url": "https://x.com/_mossypebble/status/2077726518231302506",
+      "text": "spain is gonna win very obviously why are people doubting",
+      "verdict": null, "note": "confidence, on the record"
     }
   ]
 }

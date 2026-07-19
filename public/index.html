@@ -709,6 +709,7 @@ function takeLine(t) {
   if (t.chain?.explorer) lnks.appendChild(chainLink(t.chain.explorer));
   const v = el.querySelector('.v');
   if (t.verdict) { v.textContent = t.verdict === 'wrong' ? '💀 was wrong' : '😤 was right'; v.className = `v ${t.verdict}`; }
+  else if (t.stance === 'call') { v.textContent = '⏳ open call'; v.title = 'committed on-chain before the result — settles at full time'; }
   else v.remove();
   box.prepend(el);
   takeEls.set(t.id, el);
