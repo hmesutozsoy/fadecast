@@ -1,4 +1,4 @@
-# FadeCast ⚡
+# FadeCast
 
 **Talk is cheap. Receipts are forever.**
 
