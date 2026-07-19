@@ -9,11 +9,11 @@ Honest notes from building FadeCast against TxLINE over the hackathon.
   design the whole product (including a replay/backtest mode) before spending
   anything.
 - **SSE for streaming was a good choice.** Plain `fetch` + a 20-line SSE
-  parser is all a consumer needs — no SDK lock-in. The docs' note that "an
+  parser is all a consumer needs, no SDK lock-in. The docs' note that "an
   open connection doesn't guarantee a covered fixture is producing data" is
   honest and saved us debugging time.
 - **Validation proofs are the differentiator.** Cryptographically verifiable
-  *input* data is what makes an auditable *decision* trail meaningful — we
+  *input* data is what makes an auditable *decision* trail meaningful, we
   designed our on-chain commitments to reference them. Lean into this in the
   positioning; it's what no conventional odds feed offers.
 - **The network-matching warning in the quickstart** (RPC, program ID, JWT and
@@ -33,7 +33,7 @@ Honest notes from building FadeCast against TxLINE over the hackathon.
    endpoints and parameters, but we could not find canonical example JSON
    payloads for odds/scores responses. We wrote a defensive normalizer that
    tolerates several plausible field spellings (`fixtureId`/`fixture_id`,
-   `prices.home`/`1`/`h`) — publishing one canonical example response per
+   `prices.home`/`1`/`h`), publishing one canonical example response per
    endpoint would remove that guesswork.
 3. **The devnet IDL isn't downloadable from the docs.** The quickstart code
    imports `./idl/txoracle.json`, but we had to find the actual IDL in other
@@ -41,7 +41,7 @@ Honest notes from building FadeCast against TxLINE over the hackathon.
    next to the quickstart.
 4. **Docs are hard to consume programmatically.** The documentation site
    renders client-side, so deep links 404 for non-browser fetchers, and
-   there's no `llms.txt`. Mintlify supports `llms.txt` — enabling it would
+   there's no `llms.txt`. Mintlify supports `llms.txt`, enabling it would
    make the docs legible to the AI coding tools most hackathon builders are
    using.
 5. **Minor:** the two-header auth (`Authorization: Bearer <jwt>` +

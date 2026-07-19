@@ -54,6 +54,10 @@
     border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
     color: var(--ink-2); font-size: 12px; background: var(--surface);
   }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .seg button { font: inherit; font-size: 12px; padding: 3px 14px; background: none; border: none; color: var(--ink-2); cursor: pointer; }
+  .seg button.on { background: var(--series); color: #fff; font-weight: 600; }
+  .seg button:not(.on):hover { color: var(--series); }
   .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
   select.chip, button.chip { font: inherit; font-size: 12px; appearance: none; -webkit-appearance: none; }
   select.chip { max-width: 210px; text-overflow: ellipsis; }
@@ -191,7 +195,7 @@
     flex: 1; padding: 8px 0; border-radius: 8px; font: inherit; font-size: 12.5px; cursor: pointer;
     background: none; border: 1px solid var(--border); color: var(--ink);
   }
-  #rules .rbtns #r-apply { border-color: var(--series); color: var(--series); font-weight: 700; }
+  #setup .rbtns #r-apply { border-color: var(--series); color: var(--series); font-weight: 700; }
   #setup .rbtns .primary { border-color: var(--series); color: var(--series); font-weight: 700; }
   #setup .rbtns .danger { border-color: var(--critical); color: var(--critical); font-weight: 700; }
   #rules .rbtns button:hover, #setup .rbtns button:hover { background: rgba(255,255,255,0.04); }
@@ -280,7 +284,6 @@
     <h1>FADE<b>CAST</b></h1>
   </a>
   <div class="chips">
-    <button id="setupbtn" class="chip" style="cursor:pointer" title="Polymarket wallet, trading limits, market making">💠 Polymarket wallet</button>
     <button id="connect" class="chip" style="cursor:pointer" title="connect Phantom — your identity and on-chain record">◎ Solana wallet</button>
   </div>
 </header>
@@ -292,8 +295,10 @@
   <button id="stop" class="chip" style="cursor:pointer" title="pause the replay">⏹ Stop</button>
   <button id="faster" class="chip" style="cursor:pointer" title="double the replay speed">⏩</button>
   <button id="skipend" class="chip" style="cursor:pointer" title="jump to the end of this replay">⏭</button>
-  <button id="gear" class="chip" style="cursor:pointer" title="customize when the bot trades">Fade settings</button>
-  <button id="golive" class="chip" style="cursor:pointer;border-color:var(--critical);color:var(--critical)" title="switch between replays and the live Polymarket market">🔴 Go live</button>
+  <button id="gear" class="chip" style="cursor:pointer" title="strategy, allocation, wallet, market maker">Settings</button>
+  <span class="seg" id="modeseg" title="switch between historical replays and the live Polymarket market">
+    <button id="seg-replay" class="on">Replay</button><button id="seg-live">Live</button>
+  </span>
 </nav>
 
 <div class="upcoming" id="upcoming"></div>
@@ -339,40 +344,43 @@
   </table>
 </section>
 
-<div id="rules" hidden>
-  <div class="rhead">Fade settings — when should the bot trade, and which side?</div>
+
+</div>
+
+<div id="setup" hidden>
+  <div class="rhead" id="setuphead">Fade settings</div>
+
+  <div class="sechead">Strategy: when the bot trades, and which side</div>
   <div class="rgrid">
     <label>Side <span>against the panic, or with it</span>
       <select id="r-side">
-        <option value="fade">🎯 Fade the panic</option>
-        <option value="ride">🌊 Ride the wave</option>
+        <option value="fade">Fade the panic</option>
+        <option value="ride">Ride the wave</option>
       </select>
     </label>
     <label>Panic threshold <span>jump size that triggers a signal (pts)</span><input id="r-threshold" type="number" step="1" min="2" max="30"></label>
     <label>Confirmation <span>seconds of calm before entering</span><input id="r-confirm" type="number" step="5" min="0" max="300"></label>
-    <label>Hold <span>seconds until the fade exits</span><input id="r-hold" type="number" step="10" min="30" max="900"></label>
-    <label>Stop-loss <span>cut the fade if it runs against you (pts)</span><input id="r-stop" type="number" step="1" min="2" max="30"></label>
-    <label>Band low <span>never fade below this price (pts)</span><input id="r-bandLo" type="number" step="1" min="0" max="49"></label>
-    <label>Band high <span>never fade above this price (pts)</span><input id="r-bandHi" type="number" step="1" min="51" max="100"></label>
+    <label>Hold <span>seconds until the trade exits</span><input id="r-hold" type="number" step="10" min="30" max="900"></label>
+    <label>Stop-loss <span>cut the trade if it runs against you (pts)</span><input id="r-stop" type="number" step="1" min="2" max="30"></label>
+    <label>Band low <span>never trade below this price (pts)</span><input id="r-bandLo" type="number" step="1" min="0" max="49"></label>
+    <label>Band high <span>never trade above this price (pts)</span><input id="r-bandHi" type="number" step="1" min="51" max="100"></label>
   </div>
   <div class="rbtns">
-    <button id="r-apply">Apply & replay</button>
-    <button id="r-reset">Reset to bot defaults</button>
+    <button id="r-apply" class="primary">Apply &amp; replay</button>
+    <button id="r-reset">Reset to defaults</button>
   </div>
-  <div class="rnote">Your rules, the bot's hands — every custom-strategy call still goes on-chain.</div>
-</div>
+  <div class="msg" id="r-msg"></div>
 
-<div id="setup" hidden>
-  <div class="rhead">💠 Polymarket wallet & trading</div>
-  <div class="rnote" style="margin:0 0 4px">Two chains, two jobs: trades execute on <b>Polymarket</b> (Polygon,
-    real USDC). <b>Solana</b> is the notary — every call is timestamped there <i>before</i> it resolves, so the
+  <div class="live-only">
+  <div class="rnote" style="margin:10px 0 4px">Two chains, two jobs. Trades execute on <b>Polymarket</b> (Polygon,
+    real USDC). <b>Solana</b> is the notary: every call is timestamped there <i>before</i> it resolves, so the
     record can't be faked. They never touch each other.</div>
 
   <div class="sechead">Allocation</div>
   <div class="rgrid">
     <label>$ per fade<span>how much USDC the bot puts on each individual signal</span>
       <input id="st-size" type="number" step="1" min="1" placeholder="5"></label>
-    <label>Max open $<span>total $ allowed in open positions at once — new signals are skipped past this</span>
+    <label>Max open $<span>total $ allowed in open positions at once. New signals are skipped past this</span>
       <input id="st-exposure" type="number" step="5" min="1" placeholder="15"></label>
     <label>Kill switch $<span>if realized losses reach this, the bot disarms itself and stops trading</span>
       <input id="st-loss" type="number" step="5" min="1" placeholder="20"></label>
@@ -380,50 +388,57 @@
   <div class="rbtns"><button id="st-save" class="primary">Save limits</button></div>
   <div class="msg" id="st-limitsmsg"></div>
 
-  <div class="sechead">Connect your Polymarket wallet (your own instance only)</div>
-  <label>Polymarket account private key<input id="st-key" type="password" placeholder="0x… (never the seed phrase)" autocomplete="off"></label>
-  <div class="rgrid" style="margin-top:10px">
-    <label>Account type
-      <select id="st-sigtype">
-        <option value="1">Email login (proxy)</option>
-        <option value="2">MetaMask (proxy)</option>
-        <option value="0">Raw EOA</option>
-      </select>
-    </label>
-    <label>Funder (deposit address)<input id="st-funder" placeholder="0x… from your profile"></label>
+  <div id="keyform">
+    <div class="sechead">Connect your Polymarket wallet (your own instance only)</div>
+    <label>Polymarket account private key<input id="st-key" type="password" placeholder="0x… (never the seed phrase)" autocomplete="off"></label>
+    <div class="rgrid" style="margin-top:10px">
+      <label>Account type
+        <select id="st-sigtype">
+          <option value="1">Email login (proxy)</option>
+          <option value="2">MetaMask (proxy)</option>
+          <option value="0">Raw EOA</option>
+        </select>
+      </label>
+      <label>Funder (deposit address)<input id="st-funder" placeholder="0x… from your profile"></label>
+    </div>
+    <div class="rbtns">
+      <button id="st-arm" class="danger">Enable live trading</button>
+    </div>
+    <div class="warn">Your key goes to THIS server and is held in memory only. Only arm an instance you run yourself
+      (localhost or your own deploy), never someone else's website. Shared deployments reject keys by design.</div>
   </div>
-  <div class="rbtns">
-    <button id="st-arm" class="danger">Arm live</button>
-    <button id="st-disarm">Disarm → paper</button>
+  <div id="armedbox" hidden>
+    <div class="sechead">Live trading</div>
+    <div class="rnote" style="margin:0 0 8px" id="armedinfo">connected</div>
+    <div class="rbtns"><button id="st-disarm">Disarm, back to paper</button></div>
   </div>
-  <div class="warn">⚠ Your key goes to THIS server and is held in memory only. Only arm an instance you run yourself
-    (localhost or your own deploy) — never someone else's website. Shared deployments reject keys by design.</div>
   <div class="msg" id="st-keymsg"></div>
 
-  <div class="sechead">Market maker — quotes when calm, hides when panic</div>
+  <div class="sechead">Market maker: quotes when calm, hides when panic</div>
   <div class="rgrid">
-    <label>Spread (¢ total)<span>gap between your buy and sell quotes — you earn this on a round trip</span>
+    <label>Spread (¢ total)<span>gap between your buy and sell quotes. You earn this on a round trip</span>
       <input id="mm-spread" type="number" step="0.5" min="0.5" placeholder="2"></label>
     <label>$ per side<span>size of each quote, both buy and sell</span>
       <input id="mm-size" type="number" step="1" min="1" placeholder="5"></label>
-    <label>Max inventory $<span>position cap — past it the growing side stops quoting</span>
+    <label>Max inventory $<span>position cap. Past it the growing side stops quoting</span>
       <input id="mm-inv" type="number" step="5" min="5" placeholder="20"></label>
     <label>Panic pause (s)<span>how long to pull quotes after the fade engine detects panic</span>
       <input id="mm-pause" type="number" step="15" min="15" placeholder="90"></label>
   </div>
   <div class="rbtns">
-    <button id="mm-start" class="primary">🏪 Start quoting</button>
-    <button id="mm-stop">Pull quotes</button>
+    <button id="mm-start" class="primary">Start quoting</button>
+    <button id="mm-stop" title="cancel both resting quotes and stop re-quoting">Pull quotes</button>
   </div>
   <div class="rnote">The fade engine is the risk radar: the instant a panic signal fires, quotes are pulled for the
-    pause window — the exact moment market makers usually get run over.</div>
+    pause window, the exact moment market makers usually get run over.</div>
   <div class="msg" id="mm-msg"></div>
+  </div>
 </div>
 
 <footer style="margin-top:22px;padding:14px 0;border-top:1px solid var(--border);color:var(--muted);font-size:11.5px;display:flex;gap:18px;flex-wrap:wrap">
   <span>⚡ odds rails: <b style="color:var(--ink-2)">TxLINE</b> StablePrice streams</span>
   <span>💠 venue: <b style="color:var(--ink-2)">Polymarket</b></span>
-  <span>⛓ notary: <b style="color:var(--ink-2)">Solana</b> — every call committed <i>before</i> it resolves</span>
+  <span>⛓ notary: <b style="color:var(--ink-2)">Solana</b>: every call committed <i>before</i> it resolves</span>
   <a href="https://github.com/hmesutozsoy/fadecast" target="_blank" style="margin-left:auto;color:var(--muted)">GitHub ↗</a>
 </footer>
 
@@ -919,10 +934,10 @@ $('connect').addEventListener('click', async () => {
 });
 
 // ---- fade rules: customize when the bot fades ----
-$('gear').addEventListener('click', () => { $('rules').hidden = !$('rules').hidden; $('setup').hidden = true; });
+$('gear').addEventListener('click', () => { $('setup').hidden = !$('setup').hidden; });
 
 // ---- trading setup: limits, key arming (own instance only), market maker ----
-$('setupbtn').addEventListener('click', () => { $('setup').hidden = !$('setup').hidden; $('rules').hidden = true; });
+
 
 async function postConfig(cfg, msgEl) {
   const r = await fetch('/api/trading/config', {
@@ -955,9 +970,24 @@ $('st-arm').addEventListener('click', async () => {
     funder: $('st-funder').value.trim() || undefined
   }, $('st-keymsg'));
   $('st-key').value = '';                      // never keep the key in the DOM
-  if (r.ok) $('st-keymsg').textContent = '✓ armed LIVE — the bot now trades real money';
+  if (r.ok) {
+    $('st-keymsg').textContent = '✓ live trading enabled';
+    renderArmed(r.trading);
+  }
 });
-$('st-disarm').addEventListener('click', () => postConfig({ disarm: true }, $('st-keymsg')));
+$('st-disarm').addEventListener('click', async () => {
+  const r = await postConfig({ disarm: true }, $('st-keymsg'));
+  if (r.ok) renderArmed(r.trading);
+});
+// armed: hide the key form, show the connected state
+function renderArmed(t) {
+  const armed = !!t?.keyArmed && t?.mode === 'live';
+  $('keyform').hidden = armed;
+  $('armedbox').hidden = !armed;
+  if (armed) $('armedinfo').textContent = t.funder
+    ? `connected: funder ${t.funder} · every order uses your allocation caps`
+    : 'connected · every order uses your allocation caps';
+}
 
 $('mm-start').addEventListener('click', async () => {
   const q = new URLSearchParams();
@@ -997,17 +1027,35 @@ function fillRules(p) {
   $('r-bandLo').value = Math.round(p.band[0] * 100);
   $('r-bandHi').value = Math.round(p.band[1] * 100);
 }
-$('r-apply').addEventListener('click', async () => {
-  const q = new URLSearchParams({ match: $('pick').value, side: $('r-side').value });
+function strategyParams() {
+  const q = new URLSearchParams({ side: $('r-side').value });
   for (const [param, id] of Object.entries(
     { threshold: 'r-threshold', confirm: 'r-confirm', hold: 'r-hold', stop: 'r-stop', bandLo: 'r-bandLo', bandHi: 'r-bandHi' })) {
     const v = $(id).value;
     if (v !== '') q.set(param, v);
   }
+  return q;
+}
+$('r-apply').addEventListener('click', async () => {
+  if (isLive) {
+    // live: retune the running engine in place, no session reset
+    const r = await fetch('/api/strategy?' + strategyParams()).then(x => x.json()).catch(() => ({ ok: false }));
+    $('r-msg').textContent = r.ok ? '✓ applied to the live engine' : '✕ could not apply';
+    $('r-msg').style.color = r.ok ? 'var(--good)' : 'var(--critical)';
+    return;
+  }
+  const q = strategyParams(); q.set('match', $('pick').value);
   await fetch('/api/replay?' + q.toString());
   location.replace(location.pathname + '?s=' + Date.now());
 });
 $('r-reset').addEventListener('click', async () => {
+  if (isLive) {
+    const r = await fetch('/api/strategy?reset=1').then(x => x.json()).catch(() => ({ ok: false }));
+    if (r.ok && r.strategy) fillRules(r.strategy);
+    $('r-msg').textContent = r.ok ? '✓ back to bot defaults' : '✕ could not reset';
+    $('r-msg').style.color = r.ok ? 'var(--good)' : 'var(--critical)';
+    return;
+  }
   await fetch('/api/replay?match=' + encodeURIComponent($('pick').value));
   location.replace(location.pathname + '?s=' + Date.now());
 });
@@ -1017,9 +1065,14 @@ let liveSlug = null;   // kept for compatibility (prompt default no longer used)
 let liveMatch = null;  // soonest scheduled match {slug, home, label}
 let isLive = false;
 function renderModeToggle() {
-  $('golive').textContent = isLive ? '⏪ Replay mode' : '🔴 Go live';
-  $('golive').title = isLive ? 'back to historical replays' : 'open the next scheduled match, live';
+  $('seg-replay').classList.toggle('on', !isLive);
+  $('seg-live').classList.toggle('on', isLive);
   for (const id of ['pick', 'go', 'stop', 'faster', 'skipend']) $(id).hidden = isLive;
+  // one settings modal, two faces: strategy-only in replay, everything live
+  $('setuphead').textContent = isLive ? 'Trading settings' : 'Fade settings';
+  $('gear').textContent = isLive ? 'Trading settings' : 'Settings';
+  $('r-apply').textContent = isLive ? 'Apply live' : 'Apply & replay';
+  document.querySelectorAll('#setup .live-only').forEach(el => el.hidden = !isLive);
 }
 async function ensureSchedule() {
   if (liveMatch) return;
@@ -1027,17 +1080,19 @@ async function ensureSchedule() {
   const m = (d.matches || []).find(x => x.polymarketSlug);
   if (m) liveMatch = { slug: m.polymarketSlug, home: m.home, label: `${m.home} vs ${m.away}` };
 }
-$('golive').addEventListener('click', async () => {
-  if (isLive) {
-    await fetch('/api/replay?match=all');
-  } else {
-    $('golive').textContent = '⏳ connecting…';
-    await ensureSchedule();
-    if (!liveMatch) { renderModeToggle(); toast('No scheduled Polymarket market found right now.'); return; }
-    const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
-      .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
-    if (!r.ok) { renderModeToggle(); toast(r.error); return; }
-  }
+$('seg-replay').addEventListener('click', async () => {
+  if (!isLive) return;
+  await fetch('/api/replay?match=all');
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+$('seg-live').addEventListener('click', async () => {
+  if (isLive) return;
+  $('seg-live').textContent = '⏳';
+  await ensureSchedule();
+  if (!liveMatch) { $('seg-live').textContent = 'Live'; toast('No scheduled Polymarket market found right now.'); return; }
+  const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
+    .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
   location.replace(location.pathname + '?s=' + Date.now());
 });
 renderModeToggle();
@@ -1082,7 +1137,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   fadeboard(((st.crowd || {}).leaderboard) || []);
   fillRules(st.strategy);
   if (st.wallet) { agentWallet = st.wallet; refreshProof(); }
-  if (st.trading) { tradingHeader(st.trading); (st.trading.orders || []).forEach(tradeLine); }
+  if (st.trading) { tradingHeader(st.trading); renderArmed(st.trading); (st.trading.orders || []).forEach(tradeLine); }
   mmLine(st.mm);
   isLive = !!st.trading;
   renderModeToggle();

@@ -1,11 +1,11 @@
-# FadeCast — Technical Documentation
+# FadeCast, Technical Documentation
 
 ## Core idea
 
 In-play betting markets systematically **overreact to goals**: prices jump past
 fair value on the news, then mean-revert over the next few minutes. FadeCast is
 an autonomous agent that detects that overreaction in TxLINE's live odds,
-trades against it ("fades" it), and — the novel part — **commits every call to
+trades against it ("fades" it), and, the novel part, **commits every call to
 Solana before the market resolves it**. The agent's win rate is therefore
 cryptographically auditable: it cannot cherry-pick wins or delete losses. The
 losses are on-chain next to the wins.
@@ -27,11 +27,11 @@ Online port of an offline overshoot analyzer validated on real in-play data:
 
 | Rule | Value | Why |
 |---|---|---|
-| Jump detection | ≥ 6 prob-points inside 45 s, 120 s debounce | a goal *is* the jump — no separate event feed needed |
+| Jump detection | ≥ 6 prob-points inside 45 s, 120 s debounce | a goal *is* the jump, no separate event feed needed |
 | Tradeable band | 0.08 – 0.92 | at the probability boundary there is no room to revert; spread eats the edge |
 | Confirmation entry | no new extreme for 45 s | never catch the falling knife mid-cascade |
 | Hold | 240 s | the measured reversion horizon |
-| Stop-loss | 7 prob-points | a second goal inside the hold (a real comeback) is the tail risk — cut it |
+| Stop-loss | 7 prob-points | a second goal inside the hold (a real comeback) is the tail risk, cut it |
 | Costs | 0.5 c half-spread crossed on both legs | the edge is spread-dependent; this is an explicit, tunable assumption |
 
 Backtested on replays of six real 2022 World Cup matches (real goal minutes,
@@ -43,7 +43,7 @@ two honest stopped losses on the Saudi-Arabia and Japan–Spain comebacks.
 | Endpoint | Use |
 |---|---|
 | `POST {origin}/auth/guest/start` | guest JWT (first auth factor) |
-| on-chain `subscribe` (txoracle program) + `POST /api/token/activate` | free-tier API token (second auth factor) — see `scripts/subscribe.js` |
+| on-chain `subscribe` (txoracle program) + `POST /api/token/activate` | free-tier API token (second auth factor), see `scripts/subscribe.js` |
 | `GET /api/fixtures/snapshot` | fixture metadata on connect |
 | `GET /api/odds/snapshot/{fixtureId}` | warm-up state |
 | `GET /api/odds/stream` (SSE) | StablePrice odds → de-vigged implied probability → panic detection input |
@@ -63,23 +63,23 @@ Networks: devnet by default (`https://txline-dev.txodds.com`, program
 - Faucet failures degrade gracefully: commitments queue and flush on a 45 s
   retry loop; the dashboard links each signal to Solana Explorer.
 - The free-tier data subscription itself is an on-chain transaction
-  (TxLINE's txoracle program) — see `scripts/subscribe.js` for the full
+  (TxLINE's txoracle program), see `scripts/subscribe.js` for the full
   subscribe → sign → activate flow.
 - Scale path: batch a window of signals into one transaction carrying a Merkle
-  root — same auditability at 1/N fees.
+  root, same auditability at 1/N fees.
 
 ## Technical highlights
 
 - **Zero-framework Node** (one runtime dependency: `@solana/web3.js`); SSE
   fan-out to any number of dashboard viewers from one engine.
-- **Bounded memory** — tick and signal history trimmed to what the strategy
+- **Bounded memory**: tick and signal history trimmed to what the strategy
   actually needs, so live mode runs indefinitely.
 - **Market-agnostic core**: any `(market, outcome, price, ts)` series works.
-  `MODE=follow` tails a JSONL file — elections, crypto, esports plug in with
+  `MODE=follow` tails a JSONL file, elections, crypto, esports plug in with
   zero engine changes. `POST /api/takes` ingests social posts for the
   fade-your-timeline layer.
 - **Replay-on-demand**: any real match replays from one JSON entry
-  (`GET /api/replay?match=<id>&speed=N`) — deterministic, demo-safe, and the
+  (`GET /api/replay?match=<id>&speed=N`), deterministic, demo-safe, and the
   product's onboarding.
 - **Human layer**: swipeable signal cards (you vs the bot), an AI pundit with
   template fallback (optional live Claude generation), and per-account

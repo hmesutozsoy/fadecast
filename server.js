@@ -398,7 +398,7 @@ const server = http.createServer(async (req, res) => {
       const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
       try {
         const cfg = JSON.parse(body || '{}');
-        if (!polyExec) return json(400, { ok: false, error: 'go live on a Polymarket market first' });
+        if (!polyExec) return json(400, { ok: false, error: 'click Go live first: trading settings attach to the live market' });
         polyExec.setLimits(cfg);
         if (cfg.disarm) polyExec.disarm();
         if (cfg.privateKey) {
@@ -415,7 +415,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/api/mm/start') {
-    if (!polyMarket || !polySrc || !polyExec) { res.writeHead(400); return res.end('{"ok":false,"error":"go live on a Polymarket market first"}'); }
+    if (!polyMarket || !polySrc || !polyExec) { res.writeHead(400); return res.end('{"ok":false,"error":"click Go live first: quoting attaches to the live market"}'); }
     const n = (k, d) => { const v = Number(url.searchParams.get(k)); return isFinite(v) && v > 0 ? v : d; };
     if (mm) mm.stop();
     mm = new MarketMaker(polyMarket, polySrc, polyExec, {
@@ -488,6 +488,27 @@ const server = http.createServer(async (req, res) => {
     startReplay({ only: only === 'all' ? null : only, speed });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ ok: true, only, speed, strategy }));
+  }
+  if (url.pathname === '/api/strategy') {
+    // live-apply: retune the running engine without resetting the session
+    const q = k => url.searchParams.get(k);
+    const num = (k, div = 1) => (q(k) !== null && q(k) !== '' && isFinite(Number(q(k)))) ? Number(q(k)) / div : undefined;
+    if (q('reset')) {
+      strategy = {};
+      Object.assign(engine.p, new OvershootEngine({}).p);
+    } else {
+      const next = {
+        threshold: num('threshold', 100), confirm: num('confirm'), hold: num('hold'),
+        stopLoss: num('stop', 100),
+        side: ['fade', 'ride'].includes(q('side')) ? q('side') : undefined,
+        band: (num('bandLo', 100) !== undefined && num('bandHi', 100) !== undefined)
+          ? [num('bandLo', 100), num('bandHi', 100)] : undefined
+      };
+      strategy = { ...strategy, ...Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined)) };
+      Object.assign(engine.p, strategy);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, strategy: engine.p }));
   }
   if (url.pathname === '/api/events') {
     res.writeHead(200, {

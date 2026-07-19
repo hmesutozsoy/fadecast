@@ -58,5 +58,75 @@
   "sig": "3VGVMehe46nLqTHzCeRbgYJGhQ8eiSQQNTL3bGvYn2SVYvwAFx4m6MZp3cSsTGD2rdDnDCLVEUsSKVyXVEHQRKJu",
   "explorer": "https://explorer.solana.com/tx/3VGVMehe46nLqTHzCeRbgYJGhQ8eiSQQNTL3bGvYn2SVYvwAFx4m6MZp3cSsTGD2rdDnDCLVEUsSKVyXVEHQRKJu?cluster=devnet",
   "ts": 1784468697170
+ },
+ "sig:sig_fifwc_arg_che_2026_07_11_yes_1561:FADE_UP (sell)": {
+  "sig": "58vuofzQ9DesvBJGEbQmH9UwojXnoEWYcp7iMGPpDMEwCuMV8XiG1sB9ihHx6bLsCBVK4KgDSbGoz8NBPamsUawL",
+  "explorer": "https://explorer.solana.com/tx/58vuofzQ9DesvBJGEbQmH9UwojXnoEWYcp7iMGPpDMEwCuMV8XiG1sB9ihHx6bLsCBVK4KgDSbGoz8NBPamsUawL?cluster=devnet",
+  "ts": 1784477316996
+ },
+ "sig:sig_fifwc_fra_mar_2026_07_09_yes_2460:FADE_UP (sell)": {
+  "sig": "5M6cFcWAM22ciJ7fUJseCNrnSTLNu5vjKTHKVmotMMDbFK4sWW656oYTTu7ht2HJxPLSZAJKctJCpcvn7rEaCEYD",
+  "explorer": "https://explorer.solana.com/tx/5M6cFcWAM22ciJ7fUJseCNrnSTLNu5vjKTHKVmotMMDbFK4sWW656oYTTu7ht2HJxPLSZAJKctJCpcvn7rEaCEYD?cluster=devnet",
+  "ts": 1784477334108
+ },
+ "sig:sig_fifwc_fra_mar_2026_07_09_yes_2639:FADE_DOWN (buy)": {
+  "sig": "Mpb7UTGuT4Udf5nPxNfigyhQow44tYKcgjZ4kiHS7iAvvFwddk6TLcab1JTn66M2o1j9rT5QPXuvTXUrcWvCbXD",
+  "explorer": "https://explorer.solana.com/tx/Mpb7UTGuT4Udf5nPxNfigyhQow44tYKcgjZ4kiHS7iAvvFwddk6TLcab1JTn66M2o1j9rT5QPXuvTXUrcWvCbXD?cluster=devnet",
+  "ts": 1784477337656
+ },
+ "sig:sig_fifwc_esp_bel_2026_07_10_yes_2703:FADE_UP (sell)": {
+  "sig": "5uvCmnZ6KfLfnvUMtcMv9JBWPCeCEoqysGCxgB7b1cshvDMTxfuAjkojwM39pVGruBNuv8EwbawJH34at7qtASq9",
+  "explorer": "https://explorer.solana.com/tx/5uvCmnZ6KfLfnvUMtcMv9JBWPCeCEoqysGCxgB7b1cshvDMTxfuAjkojwM39pVGruBNuv8EwbawJH34at7qtASq9?cluster=devnet",
+  "ts": 1784477338785
+ },
+ "sig:sig_fifwc_nor_eng_2026_07_11_yes_3121:FADE_UP (sell)": {
+  "sig": "2cyszpWtHWHbo7B8s7PuPitGEFPVpTQPYjH8iweEjxYm9qfDbL64y85u3iDRgpXDxHvZQWdupXfinV7oT4UVjT7E",
+  "explorer": "https://explorer.solana.com/tx/2cyszpWtHWHbo7B8s7PuPitGEFPVpTQPYjH8iweEjxYm9qfDbL64y85u3iDRgpXDxHvZQWdupXfinV7oT4UVjT7E?cluster=devnet",
+  "ts": 1784477346629
+ },
+ "sig:sig_fifwc_esp_bel_2026_07_10_yes_3360:FADE_DOWN (buy)": {
+  "sig": "4Y744QX8vD1dToNZVw6QZVj4CxxXh4mVuihmMVgFXUMHDcu58rRQXtqcFLNiJEAmdaWuxVQ5bd94H9fn8HWFirUe",
+  "explorer": "https://explorer.solana.com/tx/4Y744QX8vD1dToNZVw6QZVj4CxxXh4mVuihmMVgFXUMHDcu58rRQXtqcFLNiJEAmdaWuxVQ5bd94H9fn8HWFirUe?cluster=devnet",
+  "ts": 1784477351419
+ },
+ "sig:sig_fifwc_nor_eng_2026_07_11_yes_3781:FADE_DOWN (buy)": {
+  "sig": "5QsjepSurd5k6NisLaVikDtsb7bfnDsBR1ySy5NpWruc4FohbwAqXysWGpcACakUCuFjuThphhdDVjaPmikXk5L",
+  "explorer": "https://explorer.solana.com/tx/5QsjepSurd5k6NisLaVikDtsb7bfnDsBR1ySy5NpWruc4FohbwAqXysWGpcACakUCuFjuThphhdDVjaPmikXk5L?cluster=devnet",
+  "ts": 1784477359440
+ },
+ "sig:sig_fifwc_eng_arg_2026_07_15_yes_5458:FADE_UP (sell)": {
+  "sig": "3LKrc2K1mhxFBt6HJLeskGp13B4vksmN8CSVTbMC7at8HBuzwiY1DUpJFUMjhaA83nYniWLt17xhu8YyRGm2yxUY",
+  "explorer": "https://explorer.solana.com/tx/3LKrc2K1mhxFBt6HJLeskGp13B4vksmN8CSVTbMC7at8HBuzwiY1DUpJFUMjhaA83nYniWLt17xhu8YyRGm2yxUY?cluster=devnet",
+  "ts": 1784477391403
+ },
+ "sig:sig_fifwc_nor_eng_2026_07_11_yes_5523:FADE_UP (sell)": {
+  "sig": "4MPX2fMqLoB3Xwj7pJvC9L4uAoFT3fPEemyf6Yo8GH641ihwcNdBXtiPr2XYwaD9h2Ew4LByuKUcLtFQbBTmvsQ7",
+  "explorer": "https://explorer.solana.com/tx/4MPX2fMqLoB3Xwj7pJvC9L4uAoFT3fPEemyf6Yo8GH641ihwcNdBXtiPr2XYwaD9h2Ew4LByuKUcLtFQbBTmvsQ7?cluster=devnet",
+  "ts": 1784477392466
+ },
+ "sig:sig_fifwc_fra_mar_2026_07_09_yes_5939:FADE_UP (sell)": {
+  "sig": "3E29TgnTkLpXH4GrpSsaCswz99pAhNeP1mbG8pgEg9MPDrfHnWpDD3EKiTmEsX1dDCZvqkui6GdqCFEZt6wg9o2a",
+  "explorer": "https://explorer.solana.com/tx/3E29TgnTkLpXH4GrpSsaCswz99pAhNeP1mbG8pgEg9MPDrfHnWpDD3EKiTmEsX1dDCZvqkui6GdqCFEZt6wg9o2a?cluster=devnet",
+  "ts": 1784477400916
+ },
+ "sig:sig_fifwc_arg_che_2026_07_11_yes_6241:FADE_DOWN (buy)": {
+  "sig": "4qVPNAUibXSNPnJvryZFaQWbYsFBADxA6cVteSfc18VwY6iMD1QUe5QKKoyEhprtaxAN1v4GJPbnkGyqbAAE9a34",
+  "explorer": "https://explorer.solana.com/tx/4qVPNAUibXSNPnJvryZFaQWbYsFBADxA6cVteSfc18VwY6iMD1QUe5QKKoyEhprtaxAN1v4GJPbnkGyqbAAE9a34?cluster=devnet",
+  "ts": 1784477406820
+ },
+ "sig:sig_fifwc_arg_che_2026_07_11_yes_6420:FADE_UP (sell)": {
+  "sig": "5NQRGPmboErzGnTksxP4ygxiSbkDbkfiaJUsXtmK4KAG1PmJj6xY5oArhRYKHGXeZodV8zqZnjfhQ4BSDDPK86wR",
+  "explorer": "https://explorer.solana.com/tx/5NQRGPmboErzGnTksxP4ygxiSbkDbkfiaJUsXtmK4KAG1PmJj6xY5oArhRYKHGXeZodV8zqZnjfhQ4BSDDPK86wR?cluster=devnet",
+  "ts": 1784477410509
+ },
+ "sig:sig_fifwc_eng_arg_2026_07_15_yes_7258:FADE_DOWN (buy)": {
+  "sig": "2zk1PAvmYLDaLoBo6wQAan9V1mtsGYQAonMZzG2CVJFPJtPDhZtDxhLvLanBSTf1A3BtaosY1GWQYLtTZsCiuUvq",
+  "explorer": "https://explorer.solana.com/tx/2zk1PAvmYLDaLoBo6wQAan9V1mtsGYQAonMZzG2CVJFPJtPDhZtDxhLvLanBSTf1A3BtaosY1GWQYLtTZsCiuUvq?cluster=devnet",
+  "ts": 1784477426700
+ },
+ "sig:sig_fifwc_esp_bel_2026_07_10_yes_7499:FADE_UP (sell)": {
+  "sig": "3marRSYHH5UAhfiCWKRWWtXCYWxQCZndU1yNUGqSap6U7vN3Kv8S1kh1JVJwaGA78uYjdSoyiQdnJFJbnDX3jFr6",
+  "explorer": "https://explorer.solana.com/tx/3marRSYHH5UAhfiCWKRWWtXCYWxQCZndU1yNUGqSap6U7vN3Kv8S1kh1JVJwaGA78uYjdSoyiQdnJFJbnDX3jFr6?cluster=devnet",
+  "ts": 1784477431391
  }
 }
