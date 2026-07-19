@@ -1,72 +1,86 @@
 # FadeCast ⚡
 
-**The AI pundit that can't lie about its record.**
+**Talk is cheap. Receipts are forever.**
 
-**Live demo:** [fadecast.onrender.com](https://fadecast.onrender.com)
+**Live:** [fadecast.onrender.com](https://fadecast.onrender.com) · built for the
+Superteam MY × TxODDS World Cup Hackathon
 
-An autonomous agent that trades *market panic* during World Cup matches — and
-commits every call to Solana **before** it resolves, so its track record is
-cryptographically auditable. No cherry-picking, no deleted bad calls.
+An autonomous agent that trades **market panic** in live World Cup betting
+markets — and notarizes every call on Solana **before it resolves**. Not just
+its own calls: real pundits' tweets get the same treatment. Their predictions
+are hashed and committed pre-match, settled at full time, and ranked on a
+leaderboard nobody can retroactively edit. No cherry-picking, no deleted bad
+takes — for the bot *or* the humans.
 
-Built for the Superteam MY × TxOdds World Cup Hackathon (track: **trading tools
-and agents**).
+## The receipts (click these)
 
-## The idea
+Four real X posts calling tonight's **Spain–Argentina final**, committed to
+devnet at 09:55 UTC — nine hours before kickoff:
 
-When a goal goes in, in-play win probabilities don't just reprice — they
-**overshoot** and then mean-revert over the next few minutes. We measured this
-on real in-play World Cup data before building FadeCast (see
-[the offline analyzer](https://github.com/) heritage in `lib/overshoot.js`).
-The overreaction itself is the tradeable signal.
+- [@actuallyimthe's prophecy](https://x.com/actuallyimthe/status/1414366007888650241) —
+  *"Argentina just beat Spain at the 2026 World Cup final, 3-2."* Posted
+  **July 11, 2021**, five years early, 285K likes →
+  [devnet commitment](https://explorer.solana.com/tx/2qpPuUHY7h5J9RPkEVBWEy7FCzEmQJsHExA3XNR18JzR4EY1REhtZZSLzwV4x29zaApcThqtS34EeZH83GbCdL1G?cluster=devnet)
+- [Drake's $5.1M Argentina bet](https://x.com/Stake/status/2078348767976362426)
+  (via @Stake, 8.4M views) →
+  [devnet commitment](https://explorer.solana.com/tx/4QhY4BwBDtW3VRQt59kMWwdKxXBoWkZ51K2EHVxJpQGDMDddgyQwiHpTN87RTiysLs9BdV8ty7CnBuc9W5gns9ic?cluster=devnet)
+- [@tosinmm_'s "nastiest 1-0"](https://x.com/tosinmm_/status/2078617403404034524)
+  (359K views) →
+  [devnet commitment](https://explorer.solana.com/tx/34kLhT2MZw2Px5SiBWexfAE8FEE1a5cc1XnnqCMqzqNh1yop9ksLsXxTY7e9DUBVczT3nBqxYE3QU88z4kYAhtZf?cluster=devnet)
+- [The agent's full record](https://explorer.solana.com/address/9tPbEJMTEkXafyUyEFSpndEJJP36BTSGuSXyhurEp8z7?cluster=devnet)
+  — hundreds of fade calls and tweet verdicts, every one timestamped before
+  resolution
 
-FadeCast:
+When the whistle blows, the chain settles them. The prophecy either completes
+its five-year arc or dies on-chain.
 
-1. **Streams TxLINE StablePrice odds + score events** (SSE) and converts them
-   to de-vigged implied probabilities.
-2. **Detects panic**: a jump ≥ 6 probability points inside 45 s. Each match gets
-   a live *Panic Meter* (calm → stirring → overheating → PANIC).
-3. **Fires a fade signal** — sell the spike / buy the crash — and immediately
-   **publishes a commitment to Solana devnet** (Memo program): signal ID, side,
-   prices, panic score, and a SHA-256 hash of the full signal object.
-4. **Resolves the signal** 5 minutes later against the live price stream and
-   marks its own P&L. Wins *and* losses are on-chain forever.
+## How it works
 
-The dashboard shows the live odds, panic meters, signal feed with
-`verify ↗` explorer links, the agent's cumulative record — plus **The Pundit**,
-FadeCast's live commentary voice. It reacts to goals, narrates each fade with
-its reasoning, gloats on wins, and owns its losses (which are on-chain anyway,
-so it has no choice). Commentary is template-driven by default so the demo
-never depends on a network call; set `ANTHROPIC_API_KEY` and every line is
-generated live by Claude (`PUNDIT_MODEL` to override, defaults to
-`claude-opus-4-8`), falling back to templates on any error.
+1. **Live prices in** — TxLINE StablePrice streams (SSE, de-vigged implied
+   probabilities) and Polymarket order books.
+2. **Panic detected** — a jump ≥ 6 probability points in 45 s trips the panic
+   meter (calm → stirring → overheating → PANIC).
+3. **Trade it** — fade the overshoot or ride the momentum (your choice — see
+   [the backtest](#fade-or-ride--pick-a-side-the-chain-keeps-score)) with real
+   orders on Polymarket, capped by your allocation and a kill switch.
+4. **Notarize it** — every signal and every scored tweet is committed to
+   Solana (Memo program) with a SHA-256 hash *before* the market resolves, and
+   the dashboard's Proof panel reads the record straight from the chain, not
+   from our server.
 
 ## Why on-chain commitment matters
 
 Every "AI trading guru" screenshot you've ever seen is survivorship bias.
-FadeCast's wallet is its reputation: each signal is timestamped on Solana
+FadeCast's wallet is its reputation: each call is timestamped on Solana
 *before the market resolves it*, so anyone can reconstruct the exact track
-record from the chain and integrity-check it against the off-chain data via the
-memo hash. TxLINE's validation proofs anchor the *input* data on-chain;
+record from the chain and integrity-check it against the off-chain data via
+the memo hash. TxLINE's validation proofs anchor the *input* data on-chain;
 FadeCast anchors the *decisions*.
 
-## Swipe the panic — you vs the bot
+## Fade your timeline — real pundits, real scores
 
-Every signal also lands as a **swipeable card**: drag right to *Fade with the
-bot*, left to *Ride the wave* with the crowd. When the signal resolves, the
-**You vs the bot** scoreboard settles who read the market better. No wallet,
-no stake, no onboarding — anyone watching a match can play against the agent
-in one gesture. (Too slow to swipe? The market doesn't wait, and neither does
-the card.)
+The Timeline shows **real X posts** calling real matches — found, verified,
+and linked (the handle opens the actual post). During the six real 2026
+knockout replays their calls appear pre-match as they did in reality; at full
+time each verdict lands (💀 was wrong / 😤 was right), is committed on-chain,
+and feeds the **Leaderboard**: who actually gets it right, and who to fade.
+Current standings from the quarterfinals and semifinals: an astrologer is
+2-for-2, a betting-media brand with 252K followers is 0-for-1, and the viral
+"FIFA script got leaked" thread (5.9M views) went 3-for-5.
 
-## Real matches
+Add any X account to the **＋track** watchlist and its posts flow through the
+same pipeline via `POST /api/takes` — the ingestion contract for any scout
+(X API, Apify, or manual).
 
-Replay mode runs **real FIFA World Cup 2022 fixtures** from
-[data/matches.json](data/matches.json) — actual goal minutes, scorers, and
-results: Argentina 1–2 Saudi Arabia (the canonical market-panic event),
-Germany 1–2 Japan, Japan 2–1 Spain, and the Argentina–France final. The goals
-are history; the price path between them is modeled from those events, and is
-replaced by genuine recorded TxLINE ticks the moment you run `MODE=record`
-during a live match (replay auto-prefers a recording).
+## Real matches — the actual 2026 knockouts
+
+Replays are **real Polymarket price tapes** of all six WC2026 quarterfinals
+and semifinals (1-minute bars, fetched at boot into
+[data/tapes.json](data/tapes.json)), overlaid with the real match events —
+goals, red cards, penalty saves at their actual minutes
+([data/events.json](data/events.json), sourced from ESPN/FIFA/CNN/Al Jazeera)
+— and the real posts above ([data/posts.json](data/posts.json)). The modeled
+2022 fixtures remain only as an offline fallback.
 
 ## Not just football
 
