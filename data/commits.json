@@ -1,0 +1,62 @@
+{
+ "sig:sig_fifwc_fra_esp_2026_07_14_yes_2100:FADE_DOWN (buy)": {
+  "sig": "3nRhvNRx3PiewqUVEjhNva8atQjDeMFxQQod4NTdkCr62HgvpSCZVkdkRfS8cjuTVBAKQSgRNaBVxFo8qyBrkiAj",
+  "explorer": "https://explorer.solana.com/tx/3nRhvNRx3PiewqUVEjhNva8atQjDeMFxQQod4NTdkCr62HgvpSCZVkdkRfS8cjuTVBAKQSgRNaBVxFo8qyBrkiAj?cluster=devnet",
+  "ts": 1784468689471
+ },
+ "sig:sig_fifwc_fra_esp_2026_07_14_yes_2221:FADE_DOWN (buy)": {
+  "sig": "61FSjRSwdq9qJizVNBp7YCLkiywxYvHCZ6QXrNW4PYGJRHtBE2VHoxnhKsFv3G8uaVDRs74JywZdMSgWkq1nJeka",
+  "explorer": "https://explorer.solana.com/tx/61FSjRSwdq9qJizVNBp7YCLkiywxYvHCZ6QXrNW4PYGJRHtBE2VHoxnhKsFv3G8uaVDRs74JywZdMSgWkq1nJeka?cluster=devnet",
+  "ts": 1784468690155
+ },
+ "take:3c80aea0e84b5918:right": {
+  "sig": "2wGthgfHukY9FF6JhAfx3wAavsHUYKJ7b7BLAHgkiiqbqa9jiHtiHaeAEb2TQdbC6daTVCdLarZv3KYTEPwnvPcp",
+  "explorer": "https://explorer.solana.com/tx/2wGthgfHukY9FF6JhAfx3wAavsHUYKJ7b7BLAHgkiiqbqa9jiHtiHaeAEb2TQdbC6daTVCdLarZv3KYTEPwnvPcp?cluster=devnet",
+  "ts": 1784468691011
+ },
+ "take:55a0f72dc3f3413f:right": {
+  "sig": "5XYUWcn8z4S7qp6n1KjMDLmFyaZM72KjeGBzzBmQzqWdFwrNHgCxbkZphsgCP3yYsC5VMjHWVNcg1fiVyFB3gvez",
+  "explorer": "https://explorer.solana.com/tx/5XYUWcn8z4S7qp6n1KjMDLmFyaZM72KjeGBzzBmQzqWdFwrNHgCxbkZphsgCP3yYsC5VMjHWVNcg1fiVyFB3gvez?cluster=devnet",
+  "ts": 1784468691637
+ },
+ "take:8f3208f62671d75f:wrong": {
+  "sig": "5H7AorPCEZcfCaumPvGUEVGKF6VvmttkebRTUs3fa6SiFmvJyznuLpTjPiNXAzsqmUs5GHPyQYPKJuXZmuUKD5f2",
+  "explorer": "https://explorer.solana.com/tx/5H7AorPCEZcfCaumPvGUEVGKF6VvmttkebRTUs3fa6SiFmvJyznuLpTjPiNXAzsqmUs5GHPyQYPKJuXZmuUKD5f2?cluster=devnet",
+  "ts": 1784468692560
+ },
+ "take:2a7393da86ef5c34:right": {
+  "sig": "55P6pGdVc6mGL7CZFkvei8BaX1zyo6xoBdFKfGfQUBxoTjE6Uz8yTx61TYLSyXgc76gWUTBFzGxe2fH8bgzb5ycS",
+  "explorer": "https://explorer.solana.com/tx/55P6pGdVc6mGL7CZFkvei8BaX1zyo6xoBdFKfGfQUBxoTjE6Uz8yTx61TYLSyXgc76gWUTBFzGxe2fH8bgzb5ycS?cluster=devnet",
+  "ts": 1784468693606
+ },
+ "take:6f1106537b68446c:wrong": {
+  "sig": "5YnV9J5qBxdE8nYHh5H41ZE2yWBFCNstyjXsHWYHwsez1Y8tvoYaXdBN3vw395RMf2hjpFsNW4j5GKsHF8MNZKDq",
+  "explorer": "https://explorer.solana.com/tx/5YnV9J5qBxdE8nYHh5H41ZE2yWBFCNstyjXsHWYHwsez1Y8tvoYaXdBN3vw395RMf2hjpFsNW4j5GKsHF8MNZKDq?cluster=devnet",
+  "ts": 1784468694213
+ },
+ "take:9605e4abef780efd:wrong": {
+  "sig": "5DxWCNz3N1mt4cebL9UwuGRzuKw8nevbMTVYgEvZuTx9w7LhYWWwf1zvAbjor4cYWmhmC74sMnDFMHaemNW8s45L",
+  "explorer": "https://explorer.solana.com/tx/5DxWCNz3N1mt4cebL9UwuGRzuKw8nevbMTVYgEvZuTx9w7LhYWWwf1zvAbjor4cYWmhmC74sMnDFMHaemNW8s45L?cluster=devnet",
+  "ts": 1784468695064
+ },
+ "take:50222ffb026400bc:right": {
+  "sig": "61LKCPQ1Ybx8gkZN1Um6aNp9Y8Dyj83hSnA2mLj9MrEzGrPGZTFVhcSg1voWVuwgn2PZ95EheFonoUPKiYLK5PTo",
+  "explorer": "https://explorer.solana.com/tx/61LKCPQ1Ybx8gkZN1Um6aNp9Y8Dyj83hSnA2mLj9MrEzGrPGZTFVhcSg1voWVuwgn2PZ95EheFonoUPKiYLK5PTo?cluster=devnet",
+  "ts": 1784468695463
+ },
+ "take:e54e72b11842d186:right": {
+  "sig": "R5VdqBWnSuroke4iZiz6xSyKUKMjLn15p26ExYJGPGFiF2oVxQ2TS3Xp1jH6sXmbRcDVymJrVf5rzJkYKWBEeqd",
+  "explorer": "https://explorer.solana.com/tx/R5VdqBWnSuroke4iZiz6xSyKUKMjLn15p26ExYJGPGFiF2oVxQ2TS3Xp1jH6sXmbRcDVymJrVf5rzJkYKWBEeqd?cluster=devnet",
+  "ts": 1784468696110
+ },
+ "take:426f9688a37fe9c2:right": {
+  "sig": "3ymR7beeDaCXcH4xN7cgRkYi8UhNrhtDUFrU1fHd9tWRyhWS83bdTrophR6ShkvtvWXbPzjYqjLRLKfGQbcjARfa",
+  "explorer": "https://explorer.solana.com/tx/3ymR7beeDaCXcH4xN7cgRkYi8UhNrhtDUFrU1fHd9tWRyhWS83bdTrophR6ShkvtvWXbPzjYqjLRLKfGQbcjARfa?cluster=devnet",
+  "ts": 1784468696527
+ },
+ "take:88c9f217d64dc950:wrong": {
+  "sig": "3VGVMehe46nLqTHzCeRbgYJGhQ8eiSQQNTL3bGvYn2SVYvwAFx4m6MZp3cSsTGD2rdDnDCLVEUsSKVyXVEHQRKJu",
+  "explorer": "https://explorer.solana.com/tx/3VGVMehe46nLqTHzCeRbgYJGhQ8eiSQQNTL3bGvYn2SVYvwAFx4m6MZp3cSsTGD2rdDnDCLVEUsSKVyXVEHQRKJu?cluster=devnet",
+  "ts": 1784468697170
+ }
+}

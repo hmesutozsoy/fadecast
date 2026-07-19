@@ -192,16 +192,9 @@ async function startReplay({ only = null, speed = SPEED } = {}) {
   src.on('end', () => {
     console.log(`[fadecast] ${new Date().toISOString().slice(11, 19)} replay ended (${only || 'all'}, ${tickCount} ticks)`);
     crowd.settlePreset(); // real calls get their verdicts, the chain gets the receipts
-    broadcast('status', { mode: MODE, note: 'replay finished — next match starting…' });
-    // attract mode: the site never goes dead — rotate to the next real match
-    clearTimeout(rotationTimer);
-    rotationTimer = setTimeout(() => {
-      if (currentSrc !== src || MODE !== 'replay') return; // someone took over
-      const ms = listMatches();
-      replayIdx = (replayIdx + 1) % ms.length;
-      startReplay({ only: ms[replayIdx].fixtureId, speed });
-      broadcast('session', { note: 'new replay session' });
-    }, 8000);
+    // no auto-rotation: the finished match stays on screen with its settled
+    // calls — the viewer picks the next one
+    broadcast('status', { mode: MODE, note: 'replay finished' });
   });
   src.start();
   broadcast('session', { note: 'replay session' });

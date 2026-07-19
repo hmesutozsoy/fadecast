@@ -7,7 +7,7 @@ Superteam MY × TxODDS World Cup Hackathon
 
 An autonomous agent that trades **market panic** in live World Cup betting
 markets — and notarizes every call on Solana **before it resolves**. Not just
-its own calls: real pundits' tweets get the same treatment. Their predictions
+its own calls: real predictors' tweets get the same treatment. Their predictions
 are hashed and committed pre-match, settled at full time, and ranked on a
 leaderboard nobody can retroactively edit. No cherry-picking, no deleted bad
 takes — for the bot *or* the humans.
@@ -57,7 +57,7 @@ record from the chain and integrity-check it against the off-chain data via
 the memo hash. TxLINE's validation proofs anchor the *input* data on-chain;
 FadeCast anchors the *decisions*.
 
-## Fade your timeline — real pundits, real scores
+## Fade your timeline — real predictors, real scores
 
 The Timeline shows **real X posts** calling real matches — found, verified,
 and linked (the handle opens the actual post). During the six real 2026
