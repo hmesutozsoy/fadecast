@@ -21,7 +21,7 @@ import { SignalPublisher } from './lib/solana.js';
 import { Pundit } from './lib/pundit.js';
 import { SocialOutbox } from './lib/social.js';
 import { Crowd } from './lib/crowd.js';
-import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket, upcomingMatches } from './lib/polymarket.js';
+import { PolymarketSource, PolymarketExecutor, MarketMaker, findMarket, anyActiveMarket, upcomingMatches } from './lib/polymarket.js';
 import { fetchTapes, loadTapes } from './lib/tapes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -222,7 +222,11 @@ async function startLive() {
 // The real venue: live Polymarket order books in, fades out (paper by default;
 // live only when the operator sets POLY_PRIVATE_KEY and POLY_TRADE=live)
 async function startPoly({ slug, question }) {
-  const market = await findMarket(slug, question);
+  // no slug (or 'any'): the tournament is over — attach to the most active
+  // live market on the venue so judges can always test Live mode
+  const market = (!slug || slug === 'any')
+    ? await anyActiveMarket()
+    : await findMarket(slug, question);
   clearTimeout(rotationTimer);   // a live session outranks the attract loop
   if (currentSrc) currentSrc.stop();
   if (mm) { mm.stop(); mm = null; }
@@ -537,7 +541,7 @@ server.listen(PORT, async () => {
   if (PUBLISH) await publisher.ensureFunds().then(b => console.log(`[fadecast] devnet balance: ${b / 1e9} SOL`));
   // self-populate real 2026 knockout tapes when the host can reach Polymarket
   // (fire-and-forget: replays fall back to 2022 modeled matches until then)
-  if (loadTapes().length < 6) {
+  if (loadTapes().length < KNOCKOUTS.length) {
     fetchTapes({ log: m => console.log(`[fadecast] ${m}`) })
       .then(t => { if (t.length) console.log(`[fadecast] ${t.length} real 2026 tapes ready — next replay uses them`); })
       .catch(e => console.log(`[fadecast] tape fetch failed: ${e.message}`));

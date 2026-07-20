@@ -3,103 +3,132 @@
   "posts": [
     {
       "fixtureId": "fifwc-fra-mar-2026-07-09",
-      "handle": "@amanobviously", "followers": "5.9M views",
+      "handle": "@amanobviously",
+      "followers": "5.9M views",
       "url": "https://x.com/amanobviously/status/2075088738817097836",
       "text": "FIFA script got leaked: France will eliminate Morocco",
-      "verdict": "right", "note": "France won 2-0"
+      "verdict": "right",
+      "note": "France won 2-0"
     },
     {
       "fixtureId": "fifwc-esp-bel-2026-07-10",
-      "handle": "@amanobviously", "followers": "5.9M views",
+      "handle": "@amanobviously",
+      "followers": "5.9M views",
       "url": "https://x.com/amanobviously/status/2075088738817097836",
       "text": "FIFA script got leaked: Spain will eliminate Belgium",
-      "verdict": "right", "note": "Spain won 2-1"
+      "verdict": "right",
+      "note": "Spain won 2-1"
     },
     {
       "fixtureId": "fifwc-nor-eng-2026-07-11",
-      "handle": "@amanobviously", "followers": "5.9M views",
+      "handle": "@amanobviously",
+      "followers": "5.9M views",
       "url": "https://x.com/amanobviously/status/2075088738817097836",
       "text": "FIFA script got leaked: Norway will eliminate England",
-      "verdict": "wrong", "note": "England won 2-1 aet"
+      "verdict": "wrong",
+      "note": "England won 2-1 aet"
     },
     {
       "fixtureId": "fifwc-arg-che-2026-07-11",
-      "handle": "@amanobviously", "followers": "5.9M views",
+      "handle": "@amanobviously",
+      "followers": "5.9M views",
       "url": "https://x.com/amanobviously/status/2075088738817097836",
       "text": "FIFA script got leaked: Argentina will eliminate Switzerland",
-      "verdict": "right", "note": "Argentina won 3-1 aet"
+      "verdict": "right",
+      "note": "Argentina won 3-1 aet"
     },
     {
       "fixtureId": "fifwc-fra-esp-2026-07-14",
-      "handle": "@amanobviously", "followers": "5.9M views",
+      "handle": "@amanobviously",
+      "followers": "5.9M views",
       "url": "https://x.com/amanobviously/status/2075088738817097836",
       "text": "FIFA script got leaked: France will eliminate Spain",
-      "verdict": "wrong", "note": "Spain won 2-0"
+      "verdict": "wrong",
+      "note": "Spain won 2-0"
     },
     {
       "fixtureId": "fifwc-arg-che-2026-07-11",
-      "handle": "@chnmharish", "followers": "12.9K",
+      "handle": "@chnmharish",
+      "followers": "12.9K",
       "url": "https://x.com/chnmharish/status/2076101736289222698",
       "text": "Argentina 63–37 — a narrow 1-0 or 2-1 more likely, extra time realistic",
-      "verdict": "right", "note": "Argentina won 3-1 aet"
+      "verdict": "right",
+      "note": "Argentina won 3-1 aet"
     },
     {
       "fixtureId": "fifwc-fra-esp-2026-07-14",
-      "handle": "@chnmharish", "followers": "12.9K",
+      "handle": "@chnmharish",
+      "followers": "12.9K",
       "url": "https://x.com/chnmharish/status/2077136158040166894",
       "text": "Predicted Spain to beat France — tense, tactical opening, 0-0 or 1-0 at halftime",
-      "verdict": "right", "note": "Spain won 2-0, 1-0 at the break"
+      "verdict": "right",
+      "note": "Spain won 2-0, 1-0 at the break"
     },
     {
       "fixtureId": "fifwc-fra-esp-2026-07-14",
-      "handle": "@TheAstroNexus", "followers": "8.8K",
+      "handle": "@TheAstroNexus",
+      "followers": "8.8K",
       "url": "https://x.com/TheAstroNexus/status/2076804705779700169",
       "text": "Football logic heavily favours France — but the planetary combinations support Spain",
-      "verdict": "right", "note": "called Spain against the consensus"
+      "verdict": "right",
+      "note": "called Spain against the consensus"
     },
     {
       "fixtureId": "fifwc-fra-esp-2026-07-14",
-      "handle": "@NeilMac555", "followers": "27.8K",
+      "handle": "@NeilMac555",
+      "followers": "27.8K",
       "url": "https://x.com/NeilMac555/status/2077079361421799686",
       "text": "Spain vs France — France to advance/qualify. Reasoning below 🧵",
-      "verdict": "wrong", "note": "France lost 0-2"
+      "verdict": "wrong",
+      "note": "France lost 0-2"
     },
     {
       "fixtureId": "fifwc-eng-arg-2026-07-15",
-      "handle": "@ActionNetworkHQ", "followers": "252K",
+      "handle": "@ActionNetworkHQ",
+      "followers": "252K",
       "url": "https://x.com/ActionNetworkHQ/status/2077394243417436617",
       "text": "SEMIFINAL BEST BET: England to qualify — \"England have more depth\"",
-      "verdict": "wrong", "note": "Argentina won 2-1"
+      "verdict": "wrong",
+      "note": "Argentina won 2-1"
     },
-
-    { "_comment": "— THE FINAL: pending calls, committed on-chain BEFORE kickoff; add verdicts after the match —" },
+    {
+      "_comment": "— THE FINAL: pending calls, committed on-chain BEFORE kickoff; add verdicts after the match —"
+    },
     {
       "fixtureId": "fifwc-esp-arg-2026-07-19",
-      "handle": "@actuallyimthe", "followers": "21.8K",
+      "handle": "@actuallyimthe",
+      "followers": "21.8K",
       "url": "https://x.com/actuallyimthe/status/1414366007888650241",
       "text": "\"Argentina just beat Spain at the 2026 World Cup final, 3-2.\" — posted July 11, 2021, five years early",
-      "verdict": null, "note": "the prophecy tweet, 285K likes"
+      "verdict": "wrong",
+      "note": "the five-year prophecy died at the final whistle: Spain won 1-0"
     },
     {
       "fixtureId": "fifwc-esp-arg-2026-07-19",
-      "handle": "@Stake", "followers": "561.5K",
+      "handle": "@Stake",
+      "followers": "561.5K",
       "url": "https://x.com/Stake/status/2078348767976362426",
       "text": "Drake has gone big on Argentina — a $5.1M payout awaits if they beat Spain in regular time",
-      "verdict": null, "note": "the Drake curse, on the record (8.4M views)"
+      "verdict": "wrong",
+      "note": "Argentina lost, and it went to extra time anyway. The curse holds"
     },
     {
       "fixtureId": "fifwc-esp-arg-2026-07-19",
-      "handle": "@tosinmm_", "followers": "5,072",
+      "handle": "@tosinmm_",
+      "followers": "5,072",
       "url": "https://x.com/tosinmm_/status/2078617403404034524",
       "text": "Spain Argentina is going to be nastiest 1-0 btw",
-      "verdict": null, "note": "359K views the night before the final"
+      "verdict": "right",
+      "note": "called the EXACT score: Spain 1-0, extra time, a red card. Nastiest indeed"
     },
     {
       "fixtureId": "fifwc-esp-arg-2026-07-19",
-      "handle": "@_mossypebble", "followers": null,
+      "handle": "@_mossypebble",
+      "followers": null,
       "url": "https://x.com/_mossypebble/status/2077726518231302506",
       "text": "spain is gonna win very obviously why are people doubting",
-      "verdict": null, "note": "confidence, on the record"
+      "verdict": "right",
+      "note": "Spain won the World Cup"
     }
   ]
 }

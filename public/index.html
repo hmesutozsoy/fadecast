@@ -498,6 +498,7 @@ function matchCard(fixtureId, label) {
 function setTeams(m, label) {
   const parts = (label || '').split('—')[0].split(/ vs\.? /i).map(s => s.trim());
   if (parts.length === 2 && parts[0] && parts[1]) { m.ta.textContent = parts[0]; m.tb.textContent = parts[1]; }
+  else { m.ta.textContent = 'Yes'; m.tb.textContent = 'No'; }  // non-match markets
 }
 
 // Polymarket-style prices: both outcomes, in cents
@@ -1055,6 +1056,8 @@ async function ensureSchedule() {
   const d = await fetch('/api/upcoming').then(r => r.json()).catch(() => ({ matches: [] }));
   const m = (d.matches || []).find(x => x.polymarketSlug);
   if (m) liveMatch = { slug: m.polymarketSlug, home: m.home, label: `${m.home} vs ${m.away}` };
+  // tournament over: attach to the venue's most active market instead of dying
+  else liveMatch = { slug: 'any', home: '', label: 'the most active live market' };
 }
 $('seg-replay').addEventListener('click', async () => {
   if (!isLive) return;
