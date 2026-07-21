@@ -872,6 +872,14 @@ const openCards = new Map();
 function loadWalletState() {}
 
 // ---- replay picker / stop ----
+// the picker follows whatever is actually playing (set via card clicks,
+// banner buttons, or rotation) so Apply & replay retunes THAT match
+let pickWanted = null;
+function syncPick() {
+  if (pickWanted && [...$('pick').options].some(o => o.value === pickWanted)) {
+    $('pick').value = pickWanted;
+  }
+}
 fetch('/api/matches').then(r => r.json()).then(list => {
   for (const m of list) {
     const o = document.createElement('option');
@@ -879,6 +887,7 @@ fetch('/api/matches').then(r => r.json()).then(list => {
     o.textContent = `▶ ${m.label} (${m.result})`;
     $('pick').appendChild(o);
   }
+  syncPick();
 });
 $('go').addEventListener('click', async () => {
   await fetch(`/api/replay?match=${encodeURIComponent($('pick').value)}`);
@@ -1157,6 +1166,7 @@ fetch('/api/state').then(r => r.json()).then(st => {
   if (st.trading) { tradingHeader(st.trading); renderArmed(st.trading); (st.trading.orders || []).forEach(tradeLine); }
   mmLine(st.mm);
   isLive = !!st.trading;
+  if (st.replayOnly) { pickWanted = st.replayOnly; syncPick(); }
   renderModeToggle();
   if (st.publishing === false) {
     // this instance isn't notarizing: say so instead of a silently empty panel

@@ -83,6 +83,7 @@ const saveHandles = () => {
 };
 let upcomingCache = { ts: 0, data: null };
 let replayIdx = -1;      // attract-mode rotation cursor
+let replayOnly = null;   // the match the current replay session is playing
 let rotationTimer = null; // only ever ONE pending rotation
 
 function broadcast(event, data) {
@@ -163,6 +164,7 @@ setInterval(async () => {
 // ---- data sources -----------------------------------------------------------
 
 async function startReplay({ only = null, speed = SPEED } = {}) {
+  replayOnly = only;   // the UI picker follows what is actually playing
   clearTimeout(rotationTimer);
   if (currentSrc) currentSrc.stop();
   if (mm) { mm.stop(); mm = null; }
@@ -297,6 +299,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       mode: MODE,
+      replayOnly,
       wallet: publisher.address,
       published: publisher.published.length,
       publishing: PUBLISH,   // false → this instance is not committing on-chain
