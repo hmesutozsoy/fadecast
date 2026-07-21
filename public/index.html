@@ -65,6 +65,18 @@
   button.chip:hover { border-color: var(--series); color: var(--series); }
   .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
 
+  #ended {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; margin-bottom: 16px; color: var(--ink-2); font-size: 13.5px; line-height: 1.6;
+  }
+  #ended b { color: var(--ink); display: block; margin-bottom: 4px; font-size: 15px; }
+  #ended .ebtns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  #ended .ebtns button {
+    font: inherit; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--series); color: var(--series); background: none;
+  }
+  #ended .ebtns #ended-any { border-color: var(--border); color: var(--ink-2); }
+  #ended .ebtns button:hover { background: rgba(255,255,255,0.04); }
   .upcoming { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
   .upcoming:empty { display: none; }
   .up {
@@ -300,6 +312,15 @@
     <button id="seg-replay" class="on">Replay</button><button id="seg-live">Live</button>
   </span>
 </nav>
+
+<div id="ended" hidden>
+  <b>🏆 The 2026 World Cup has ended — Spain won the final 1-0.</b>
+  There is nothing left to trade live. Watch the replays to see which strategies, and which predictors, actually worked.
+  <div class="ebtns">
+    <button id="ended-final">▶ Replay the final</button>
+    <button id="ended-any" title="attach the live pipeline to the venue's most active market, paper mode">Connect to a live market anyway</button>
+  </div>
+</div>
 
 <div class="upcoming" id="upcoming"></div>
 
@@ -1056,8 +1077,7 @@ async function ensureSchedule() {
   const d = await fetch('/api/upcoming').then(r => r.json()).catch(() => ({ matches: [] }));
   const m = (d.matches || []).find(x => x.polymarketSlug);
   if (m) liveMatch = { slug: m.polymarketSlug, home: m.home, label: `${m.home} vs ${m.away}` };
-  // tournament over: attach to the venue's most active market instead of dying
-  else liveMatch = { slug: 'any', home: '', label: 'the most active live market' };
+  // no WC match left: liveMatch stays null and Live shows the ended notice
 }
 $('seg-replay').addEventListener('click', async () => {
   if (!isLive) return;
@@ -1068,10 +1088,26 @@ $('seg-live').addEventListener('click', async () => {
   if (isLive) return;
   $('seg-live').textContent = '⏳';
   await ensureSchedule();
-  if (!liveMatch) { $('seg-live').textContent = 'Live'; toast('No scheduled Polymarket market found right now.'); return; }
+  if (!liveMatch) {
+    // the honest state: tournament over — point at the replays instead of
+    // silently attaching to some unrelated market
+    $('seg-live').textContent = 'Live';
+    $('ended').hidden = false;
+    $('ended').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
     .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+$('ended-final').addEventListener('click', async () => {
+  await fetch('/api/replay?match=fifwc-esp-arg-2026-07-19');
+  location.replace(location.pathname + '?s=' + Date.now());
+});
+$('ended-any').addEventListener('click', async () => {
+  const r = await fetch('/api/poly/start?slug=any').then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  if (!r.ok) { toast(r.error); return; }
   location.replace(location.pathname + '?s=' + Date.now());
 });
 renderModeToggle();
