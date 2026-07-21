@@ -903,6 +903,8 @@ fetch('/api/upcoming').then(r => r.json()).then(({ matches }) => {
   matches = matches || [];
   const first = matches.find(m => m.polymarketSlug);
   if (first) { liveSlug = first.polymarketSlug; liveMatch = { slug: first.polymarketSlug, home: first.home, label: `${first.home} vs ${first.away}` }; }
+  // tournament over: the banner is standing information in BOTH modes
+  else { wcOver = true; renderEnded(); }
   const dt = iso => new Date(iso.includes('T') ? iso : iso + 'T19:00:00Z');
   const when = iso => {
     const ms = dt(iso) - Date.now();
@@ -1061,6 +1063,11 @@ $('r-reset').addEventListener('click', async () => {
 
 // ---- go live: one-click toggle between replays and the live venue ----
 let liveSlug = null;   // kept for compatibility (prompt default no longer used)
+let wcOver = false;    // no World Cup markets left anywhere
+function renderEnded() {
+  $('ended').hidden = !wcOver;
+  $('ended-any').hidden = isLive;      // already live: that button is moot
+}
 let liveMatch = null;  // soonest scheduled match {slug, home, label}
 let isLive = false;
 function renderModeToggle() {
@@ -1071,6 +1078,7 @@ function renderModeToggle() {
   $('setuphead').textContent = isLive ? 'Trading settings' : 'Fade settings';
   $('r-apply').textContent = isLive ? 'Apply live' : 'Apply & replay';
   document.querySelectorAll('#setup .live-only').forEach(el => el.hidden = !isLive);
+  renderEnded();
 }
 async function ensureSchedule() {
   if (liveMatch) return;
@@ -1080,22 +1088,20 @@ async function ensureSchedule() {
   // no WC match left: liveMatch stays null and Live shows the ended notice
 }
 $('seg-replay').addEventListener('click', async () => {
-  if (!isLive) return;
-  await fetch('/api/replay?match=all');
+  // in live mode: back to replays. Already in replay mode: (re)start them.
+  await fetch('/api/replay?match=' + encodeURIComponent(isLive ? 'all' : $('pick').value));
   location.replace(location.pathname + '?s=' + Date.now());
 });
+async function goLiveAny() {
+  const r = await fetch('/api/poly/start?slug=any').then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
+  if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
+  location.replace(location.pathname + '?s=' + Date.now());
+}
 $('seg-live').addEventListener('click', async () => {
   if (isLive) return;
   $('seg-live').textContent = '⏳';
   await ensureSchedule();
-  if (!liveMatch) {
-    // the honest state: tournament over — point at the replays instead of
-    // silently attaching to some unrelated market
-    $('seg-live').textContent = 'Live';
-    $('ended').hidden = false;
-    $('ended').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return;
-  }
+  if (!liveMatch) return goLiveAny();   // tournament over: most active market
   const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
     .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
@@ -1105,11 +1111,7 @@ $('ended-final').addEventListener('click', async () => {
   await fetch('/api/replay?match=fifwc-esp-arg-2026-07-19');
   location.replace(location.pathname + '?s=' + Date.now());
 });
-$('ended-any').addEventListener('click', async () => {
-  const r = await fetch('/api/poly/start?slug=any').then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
-  if (!r.ok) { toast(r.error); return; }
-  location.replace(location.pathname + '?s=' + Date.now());
-});
+$('ended-any').addEventListener('click', goLiveAny);
 renderModeToggle();
 
 let tradesEmpty = true;
