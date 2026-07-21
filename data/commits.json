@@ -128,5 +128,35 @@
   "sig": "3marRSYHH5UAhfiCWKRWWtXCYWxQCZndU1yNUGqSap6U7vN3Kv8S1kh1JVJwaGA78uYjdSoyiQdnJFJbnDX3jFr6",
   "explorer": "https://explorer.solana.com/tx/3marRSYHH5UAhfiCWKRWWtXCYWxQCZndU1yNUGqSap6U7vN3Kv8S1kh1JVJwaGA78uYjdSoyiQdnJFJbnDX3jFr6?cluster=devnet",
   "ts": 1784477431391
+ },
+ "sig:sig_fifwc_esp_arg_2026_07_19_yes_8701:FADE_UP (sell)": {
+  "sig": "3QN2zJ9Jq3xokoh29yY1t9tS59STWSfibFZ2bAfyvzXFXWZHmSNg4Gmy4JeHDMmZRXnHwYgffsLUtgzmC6EazieC",
+  "explorer": "https://explorer.solana.com/tx/3QN2zJ9Jq3xokoh29yY1t9tS59STWSfibFZ2bAfyvzXFXWZHmSNg4Gmy4JeHDMmZRXnHwYgffsLUtgzmC6EazieC?cluster=devnet",
+  "ts": 1784597469081
+ },
+ "sig:sig_fifwc_esp_arg_2026_07_19_yes_10679:FADE_UP (sell)": {
+  "sig": "31NCf3PUB4vi3rgHKhnDs65chsPr9t5S9BuqbcA5N9QjiUdJ65VAGCeiFtg8mfQoVQtxEuyAZ364HH7Jr1wKxidf",
+  "explorer": "https://explorer.solana.com/tx/31NCf3PUB4vi3rgHKhnDs65chsPr9t5S9BuqbcA5N9QjiUdJ65VAGCeiFtg8mfQoVQtxEuyAZ364HH7Jr1wKxidf?cluster=devnet",
+  "ts": 1784597469751
+ },
+ "take:f7a10dae63e4d4d2:wrong": {
+  "sig": "57Dq9hRfQ8W2w5uYsMBadYv4MZ5YQ6a118dm7maTQvSA45JTUkxHHCaYbBH18gKcBDofiYFdYnCW6bKtvYSjwt9S",
+  "explorer": "https://explorer.solana.com/tx/57Dq9hRfQ8W2w5uYsMBadYv4MZ5YQ6a118dm7maTQvSA45JTUkxHHCaYbBH18gKcBDofiYFdYnCW6bKtvYSjwt9S?cluster=devnet",
+  "ts": 1784597470448
+ },
+ "take:95ad52e7f8903057:wrong": {
+  "sig": "399GGprxa9g57QoBj2LVRG3EF1rr3WkoNxj24xRJb5X4iBWmxKDRgQaZJzqbBGrmikugnQw8Asf1pVk3e8uSRYai",
+  "explorer": "https://explorer.solana.com/tx/399GGprxa9g57QoBj2LVRG3EF1rr3WkoNxj24xRJb5X4iBWmxKDRgQaZJzqbBGrmikugnQw8Asf1pVk3e8uSRYai?cluster=devnet",
+  "ts": 1784597471158
+ },
+ "take:baaefe68e3acbc0e:right": {
+  "sig": "244QVyEde9YVAowAmasDq3Sfeo684erWhVfG1Wwy3X9DzKwyRQqa2CLaYd44ajfdaQJDtg4Pxtma6og5mZRSkqTS",
+  "explorer": "https://explorer.solana.com/tx/244QVyEde9YVAowAmasDq3Sfeo684erWhVfG1Wwy3X9DzKwyRQqa2CLaYd44ajfdaQJDtg4Pxtma6og5mZRSkqTS?cluster=devnet",
+  "ts": 1784597471933
+ },
+ "take:bbaaf557905e3675:right": {
+  "sig": "5qF1jcjKWEBNq3g6aNA69aVAGg3z6jECBMYWMHPfrMG5CDX5MFiJBBeJmsT2Z9NVEDGfnFnKGnqCaqoX7FEsV3Cc",
+  "explorer": "https://explorer.solana.com/tx/5qF1jcjKWEBNq3g6aNA69aVAGg3z6jECBMYWMHPfrMG5CDX5MFiJBBeJmsT2Z9NVEDGfnFnKGnqCaqoX7FEsV3Cc?cluster=devnet",
+  "ts": 1784597472623
  }
 }
