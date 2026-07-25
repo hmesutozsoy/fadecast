@@ -75,7 +75,6 @@
     font: inherit; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
     border: 1px solid var(--series); color: var(--series); background: none;
   }
-  #ended .ebtns #ended-any { border-color: var(--border); color: var(--ink-2); }
   #ended .ebtns button:hover { background: rgba(255,255,255,0.04); }
   .upcoming { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
   .upcoming:empty { display: none; }
@@ -318,7 +317,6 @@
   There is nothing left to trade live. Watch the replays to see which strategies, and which predictors, actually worked.
   <div class="ebtns">
     <button id="ended-final">▶ Replay the final</button>
-    <button id="ended-any" title="attach the live pipeline to the venue's most active market, paper mode">Connect to a live market anyway</button>
   </div>
 </div>
 
@@ -1075,7 +1073,6 @@ let liveSlug = null;   // kept for compatibility (prompt default no longer used)
 let wcOver = false;    // no World Cup markets left anywhere
 function renderEnded() {
   $('ended').hidden = !wcOver;
-  $('ended-any').hidden = isLive;      // already live: that button is moot
 }
 let liveMatch = null;  // soonest scheduled match {slug, home, label}
 let isLive = false;
@@ -1101,16 +1098,17 @@ $('seg-replay').addEventListener('click', async () => {
   await fetch('/api/replay?match=' + encodeURIComponent(isLive ? 'all' : $('pick').value));
   location.replace(location.pathname + '?s=' + Date.now());
 });
-async function goLiveAny() {
-  const r = await fetch('/api/poly/start?slug=any').then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
-  if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
-  location.replace(location.pathname + '?s=' + Date.now());
-}
 $('seg-live').addEventListener('click', async () => {
   if (isLive) return;
   $('seg-live').textContent = '⏳';
   await ensureSchedule();
-  if (!liveMatch) return goLiveAny();   // tournament over: most active market
+  if (!liveMatch) {
+    // tournament over: nothing worth trading live — say so, stay on replays
+    $('seg-live').textContent = 'Live';
+    toast('The World Cup has ended — nothing to trade live. Watch the replays.');
+    $('ended').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   const r = await fetch(`/api/poly/start?slug=${encodeURIComponent(liveMatch.slug)}&question=${encodeURIComponent(liveMatch.home || '')}`)
     .then(x => x.json()).catch(e => ({ ok: false, error: e.message }));
   if (!r.ok) { $('seg-live').textContent = 'Live'; toast(r.error); return; }
@@ -1120,7 +1118,6 @@ $('ended-final').addEventListener('click', async () => {
   await fetch('/api/replay?match=fifwc-esp-arg-2026-07-19');
   location.replace(location.pathname + '?s=' + Date.now());
 });
-$('ended-any').addEventListener('click', goLiveAny);
 renderModeToggle();
 
 let tradesEmpty = true;
