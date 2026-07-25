@@ -73,6 +73,27 @@ let polyExec = null; // Polymarket executor, active only in poly mode
 let polyMarket = null, polySrc = null;
 let mm = null;       // market maker, optional, poly mode only
 
+// ---- visit tracking (SSE lifetime = session duration; no cookies, no PII) --
+import { createHash } from 'node:crypto';
+const visits = [];               // completed sessions, in memory
+const VISIT_SALT = 'fadecast-' + (process.env.RENDER_SERVICE_ID || 'local');
+const visitorHash = req => {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+  return createHash('sha256').update(VISIT_SALT + ip).digest('hex').slice(0, 8);
+};
+const uaBrief = ua =>
+  (/bot|crawler|spider|uptime|monitor/i.test(ua) ? 'bot · ' : '') +
+  (ua.match(/(Chrome|Firefox|Safari|Edg)\/[\d.]+/)?.[1] || 'other') + ' · ' +
+  (ua.match(/\((Windows|Macintosh|iPhone|iPad|Android|Linux)/)?.[1] || '?');
+function recordVisit(v) {
+  visits.push(v);
+  if (visits.length > 500) visits.shift();
+  const m = Math.floor(v.durSec / 60), s = v.durSec % 60;
+  // Render keeps these log lines beyond restarts — the durable record
+  console.log(`[visit] ${m ? m + 'm' : ''}${s}s · ${v.who} · ${v.ua}${v.ref ? ' · from ' + v.ref : ''}`);
+  try { fs.appendFileSync(path.join(__dirname, 'data/visits.jsonl'), JSON.stringify(v) + '\n'); } catch {}
+}
+
 // tracked X accounts (persisted): whose posts the live timeline follows
 const HANDLES_PATH = path.join(__dirname, 'data/handles.json');
 const trackedHandles = new Set((() => {
@@ -523,10 +544,49 @@ const server = http.createServer(async (req, res) => {
     });
     res.write(`event: hello\ndata: ${JSON.stringify({ mode: MODE, wallet: publisher.address })}\n\n`);
     sseClients.add(res);
-    req.on('close', () => sseClients.delete(res));
-    res.on('error', () => sseClients.delete(res));   // mass reloads drop sockets mid-write
-    req.on('error', () => sseClients.delete(res));
+    // visit tracking: the SSE connection lives exactly as long as the tab is
+    // open, so its lifetime IS the session duration. IPs are salted+hashed.
+    const visit = {
+      start: Date.now(),
+      who: visitorHash(req),
+      ua: uaBrief(req.headers['user-agent'] || ''),
+      ref: (req.headers.referer || '').slice(0, 120) || null
+    };
+    let closed = false;
+    const endVisit = () => {
+      sseClients.delete(res);
+      if (closed) return;
+      closed = true;
+      visit.end = Date.now();
+      visit.durSec = Math.round((visit.end - visit.start) / 1000);
+      if (visit.durSec >= 2) recordVisit(visit);   // ignore sub-2s reconnect blips
+    };
+    req.on('close', endVisit);
+    res.on('error', endVisit);   // mass reloads drop sockets mid-write
+    req.on('error', endVisit);
     return;
+  }
+  if (url.pathname === '/api/visits') {
+    if ((url.searchParams.get('key') || '') !== (process.env.ANALYTICS_KEY || 'fadecast')) {
+      res.writeHead(403); return res.end('{"ok":false}');
+    }
+    const done = visits.slice(-100);
+    const uniq = new Set(done.map(v => v.who));
+    const durs = done.map(v => v.durSec).sort((a, b) => a - b);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      activeNow: sseClients.size,
+      sessions: done.length,
+      uniqueVisitors: uniq.size,
+      totalMinutes: +(durs.reduce((a, b) => a + b, 0) / 60).toFixed(1),
+      medianSec: durs.length ? durs[Math.floor(durs.length / 2)] : 0,
+      longestSec: durs.length ? durs[durs.length - 1] : 0,
+      note: 'in-memory since last restart; every session is also a [visit] line in the server logs',
+      recent: done.slice(-25).reverse().map(v => ({
+        when: new Date(v.start).toISOString().slice(0, 16) + 'Z',
+        durSec: v.durSec, who: v.who, ua: v.ua, ref: v.ref
+      }))
+    }, null, 1));
   }
   // static
   const file = url.pathname === '/' ? '/index.html' : url.pathname;
